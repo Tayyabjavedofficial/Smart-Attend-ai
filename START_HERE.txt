@@ -1,0 +1,75 @@
+================================================================
+  AttendAI - Smart Attendance Management System
+  START HERE
+================================================================
+
+You have THREE ways to run this project. Pick the first one that
+matches what you already have installed.
+
+
+================================================================
+  OPTION 1 - Just see the UI (Node.js only, no Docker, no Java)
+  Time: 2 minutes.  Best if your machine is bare.
+================================================================
+
+Requires: Node.js 20+   ( https://nodejs.org )
+
+  Mac/Linux:
+      ./quick-demo.sh
+
+  Windows:
+      quick-demo.bat
+
+This starts the dashboards in MOCK MODE - all UI works,
+demo accounts work, but data is canned and nothing is saved.
+Good enough for showing your supervisor what it looks like.
+
+When it starts, open:    http://localhost:3000
+
+Demo logins:
+    Admin    admin@attendai.local      Admin@12345
+    Teacher  sarah.johnson@inst.edu    Teacher@123
+    Student  aarav.sharma@inst.edu     Student@123
+
+
+================================================================
+  OPTION 2 - Full real stack with database (Docker)
+  Time: 5-10 minutes first run.  The "proper" way.
+================================================================
+
+Requires: Docker Desktop   ( https://docker.com/products/docker-desktop )
+
+  Any platform:
+      docker compose up -d
+      docker compose logs -f         (watch it boot)
+
+Wait until the logs settle.  Then open:
+
+    http://localhost:3000            (the app)
+    http://localhost:8080/swagger-ui.html   (API docs)
+    http://localhost:8000/docs        (AI service docs)
+
+Real persistence, real database, real WebSocket live updates.
+
+Stop everything with:    docker compose down
+
+
+================================================================
+  OPTION 3 - Manual, three terminals
+  Time: 15-30 minutes.  For when Docker can't be installed.
+================================================================
+
+See MANUAL_SETUP.md in this folder.  Requires Java 17, Node 20,
+Python 3.12, and MySQL 8 installed natively.
+
+
+================================================================
+  Things break?
+================================================================
+
+Open TROUBLESHOOTING.md - top 10 errors with fixes.
+
+Still stuck?  Tell whoever's helping you:
+  1. Which OPTION you picked
+  2. The exact command you ran
+  3. The last 20 lines of error output

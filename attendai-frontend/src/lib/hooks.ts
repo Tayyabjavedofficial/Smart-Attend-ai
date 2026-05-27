@@ -1,0 +1,168 @@
+"use client";
+
+import {
+  useMutation, useQuery, useQueryClient,
+  type UseMutationOptions, type UseQueryOptions,
+} from "@tanstack/react-query";
+import { api, ApiError } from "@/lib/api";
+import type { StudentRow } from "@/lib/mockData";
+
+/**
+ * Centralised query-key tree. Keeping these as constants prevents the
+ * "stringly-typed cache" trap where invalidations and queries don't match.
+ */
+export const qk = {
+  admin: {
+    dashboard: ["admin", "dashboard"] as const,
+    students: ["admin", "students"] as const,
+    teachers: ["admin", "teachers"] as const,
+    courses:  ["admin", "courses"]  as const,
+    sections: ["admin", "sections"] as const,
+    alerts:   ["admin", "alerts"]   as const,
+    devices:  ["admin", "devices"]  as const,
+  },
+  teacher: {
+    courses:  ["teacher", "courses"]  as const,
+    sessions: ["teacher", "sessions"] as const,
+    sessionLive: (id: number) => ["teacher", "sessions", id, "live"] as const,
+  },
+  student: {
+    courses: ["student", "courses"] as const,
+    active:  ["student", "active-sessions"] as const,
+    history: ["student", "history"] as const,
+    percentage: ["student", "percentage"] as const,
+  },
+} as const;
+
+// ============================================================
+// Admin
+// ============================================================
+
+export function useAdminDashboard() {
+  return useQuery({
+    queryKey: qk.admin.dashboard,
+    queryFn: api.admin.dashboard,
+  });
+}
+
+export function useStudents() {
+  return useQuery({
+    queryKey: qk.admin.students,
+    queryFn: api.admin.listStudents,
+  });
+}
+
+export function useTeachers() {
+  return useQuery({ queryKey: qk.admin.teachers, queryFn: api.admin.listTeachers });
+}
+
+export function useCourses() {
+  return useQuery({ queryKey: qk.admin.courses, queryFn: api.admin.listCourses });
+}
+
+export function useSections() {
+  return useQuery({ queryKey: qk.admin.sections, queryFn: api.admin.listSections });
+}
+
+export function useProxyAlerts() {
+  return useQuery({ queryKey: qk.admin.alerts, queryFn: api.admin.listAlerts });
+}
+
+export function useDevices() {
+  return useQuery({ queryKey: qk.admin.devices, queryFn: api.admin.listDevices });
+}
+
+/** Generic helper to bake invalidation into every CRUD mutation. */
+function useInvalidating<TVars, TData>(
+  fn: (vars: TVars) => Promise<TData>,
+  invalidateKey: readonly unknown[],
+  options?: UseMutationOptions<TData, ApiError, TVars>,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: invalidateKey });
+      options?.onSuccess?.(...args);
+    },
+    ...options,
+  });
+}
+
+export const useCreateStudent = (opts?: UseMutationOptions<StudentRow, ApiError, Partial<StudentRow> & { password?: string }>) =>
+  useInvalidating(api.admin.createStudent, qk.admin.students, opts);
+
+export const useUpdateStudent = (opts?: UseMutationOptions<StudentRow, ApiError, { id: number; patch: Partial<StudentRow> }>) =>
+  useInvalidating(
+    ({ id, patch }) => api.admin.updateStudent(id, patch),
+    qk.admin.students,
+    opts,
+  );
+
+export const useDeactivateStudent = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
+  useInvalidating(api.admin.deactivateStudent, qk.admin.students, opts);
+
+export const useResolveAlert = (opts?: UseMutationOptions<unknown, ApiError, { id: number; status: "RESOLVED" | "DISMISSED"; note?: string }>) =>
+  useInvalidating(
+    ({ id, status, note }) => api.admin.resolveAlert(id, status, note),
+    qk.admin.alerts,
+    opts,
+  );
+
+// ============================================================
+// Teacher
+// ============================================================
+
+export function useTeacherCourses() {
+  return useQuery({ queryKey: qk.teacher.courses, queryFn: api.teacher.listCourses });
+}
+
+export function useTeacherSessions() {
+  return useQuery({ queryKey: qk.teacher.sessions, queryFn: api.teacher.listSessions });
+}
+
+export function useSessionLive(sessionId: number | null) {
+  return useQuery({
+    queryKey: sessionId ? qk.teacher.sessionLive(sessionId) : ["teacher", "sessions", "no-id", "live"],
+    queryFn: () => api.teacher.sessionLive(sessionId!),
+    enabled: sessionId != null,
+  });
+}
+
+// ============================================================
+// Student
+// ============================================================
+
+export function useMyCourses() {
+  return useQuery({ queryKey: qk.student.courses, queryFn: api.student.myCourses });
+}
+
+export function useActiveSessions() {
+  return useQuery({
+    queryKey: qk.student.active,
+    queryFn: api.student.activeSessions,
+    refetchInterval: 15_000,                     // poll: cheap and good enough
+  });
+}
+
+export function useHistory() {
+  return useQuery({ queryKey: qk.student.history, queryFn: api.student.history });
+}
+
+export function usePercentage() {
+  return useQuery({ queryKey: qk.student.percentage, queryFn: api.student.percentage });
+}
+
+export const useMarkAttendance = (opts?: UseMutationOptions<unknown, ApiError, Parameters<typeof api.student.markAttendance>[0]>) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.student.markAttendance,
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: qk.student.history });
+      qc.invalidateQueries({ queryKey: qk.student.percentage });
+      qc.invalidateQueries({ queryKey: qk.student.active });
+      opts?.onSuccess?.(...args);
+    },
+    ...opts,
+  });
+};

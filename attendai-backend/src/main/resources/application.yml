@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: attendai-backend
+  profiles:
+    active: dev
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+    include-binding-errors: always
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-this-is-a-development-only-secret-do-not-use-in-production-please}
+    access-token-expiration-ms: 900000      # 15 minutes
+    refresh-token-expiration-ms: 604800000  # 7 days
+    issuer: attendai
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+  ai:
+    base-url: ${AI_SERVICE_URL:http://localhost:8000}
+    service-key: ${AI_SERVICE_KEY:dev-service-key}
+    timeout-seconds: 10
+    # Set to false once the Python FastAPI AI service is running.
+    use-stub: ${AI_USE_STUB:true}
+  attendance:
+    default-challenge-duration-seconds: 60
+    minimum-percentage: 75
+    risk-thresholds:
+      low: 30
+      medium: 60
+      high: 80
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: INFO
+    com.attendai: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG

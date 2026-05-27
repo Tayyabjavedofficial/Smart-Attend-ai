@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: attendai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: attendai
+      MYSQL_USER: attendai
+      MYSQL_PASSWORD: attendai
+    ports:
+      - "3306:3306"
+    volumes:
+      - attendai-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uattendai", "-pattendai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: phpMyAdmin for inspecting the DB during development.
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: attendai-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: attendai
+      PMA_PASSWORD: attendai
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+
+volumes:
+  attendai-mysql-data:

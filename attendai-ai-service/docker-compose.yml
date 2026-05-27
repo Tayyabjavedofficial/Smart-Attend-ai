@@ -1,0 +1,21 @@
+# Stand-alone deployment of the AI service. In a full deployment, the
+# Spring Boot backend is also added to this file (or a top-level compose
+# in the parent repo).
+services:
+  ai:
+    build: .
+    image: attendai-ai:latest
+    container_name: attendai-ai
+    ports:
+      - "8000:8000"
+    environment:
+      ATTENDAI_AI_SERVICE_KEY: ${AI_SERVICE_KEY:-dev-service-key}
+      ATTENDAI_AI_FACE_BACKEND: ${FACE_BACKEND:-stub}
+      ATTENDAI_AI_CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    volumes:
+      # Persist registered face profiles across container restarts.
+      - ai_embeddings:/app/storage/embeddings
+    restart: unless-stopped
+
+volumes:
+  ai_embeddings:

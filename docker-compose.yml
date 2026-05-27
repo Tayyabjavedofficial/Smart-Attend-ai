@@ -1,0 +1,166 @@
+# AttendAI - full stack orchestration
+#
+# Starts four services on one Docker network:
+#   - mysql       (MySQL 8.4 + named volume for persistence)
+#   - ai          (Python FastAPI - face verify + risk scoring)
+#   - backend     (Spring Boot - REST + WebSocket)
+#   - frontend    (Next.js - dashboards)
+#
+# Boot order is enforced by healthchecks:
+#   mysql healthy  -> backend starts
+#   ai    healthy  -> backend starts
+#   backend up     -> frontend reverse-proxies to it
+#
+# Usage:
+#   cp .env.example .env       # edit DB / JWT secrets for production
+#   docker compose up -d
+#   open http://localhost:3000
+
+name: attendai
+
+services:
+
+  # ----------------------------------------------------------------
+  # MySQL 8.4 - schema is auto-created by Flyway when the backend boots
+  # ----------------------------------------------------------------
+  mysql:
+    image: mysql:8.4
+    container_name: attendai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-attendai}
+      MYSQL_USER: ${DB_USER:-attendai}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-attendai}
+    ports:
+      # Only published so you can connect with a SQL client during dev.
+      # Comment out for production.
+      - "${DB_HOST_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root",
+             "-p${DB_ROOT_PASSWORD:-rootpass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - attendai
+
+  # ----------------------------------------------------------------
+  # AI Service - face register / verify / risk-score
+  # ----------------------------------------------------------------
+  ai:
+    build:
+      context: ./attendai-ai-service
+      dockerfile: Dockerfile
+    image: attendai-ai:latest
+    container_name: attendai-ai
+    restart: unless-stopped
+    environment:
+      ATTENDAI_AI_SERVICE_KEY: ${AI_SERVICE_KEY:-dev-service-key}
+      # Switch to 'opencv' for real face detection (requires uncommenting
+      # the opencv install line in attendai-ai-service/Dockerfile).
+      ATTENDAI_AI_FACE_BACKEND: ${AI_FACE_BACKEND:-stub}
+      ATTENDAI_AI_CORS_ORIGINS: "*"
+    volumes:
+      # Registered face profiles persist across container restarts.
+      - ai_embeddings:/app/storage/embeddings
+    ports:
+      # Exposed for direct debugging via Swagger at http://localhost:8000/docs
+      - "${AI_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=2).status == 200 else 1)"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 15s
+    networks:
+      - attendai
+
+  # ----------------------------------------------------------------
+  # Backend - Spring Boot + JWT + WebSocket
+  # ----------------------------------------------------------------
+  backend:
+    build:
+      context: ./attendai-backend
+      dockerfile: Dockerfile
+    image: attendai-backend:latest
+    container_name: attendai-backend
+    restart: unless-stopped
+    environment:
+      # Spring auto-configures from these standard env names.
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/${DB_NAME:-attendai}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true"
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-attendai}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-attendai}
+      SPRING_PROFILES_ACTIVE: dev
+
+      # JWT signing key - MUST be overridden in production. Min 32 chars for HS256.
+      JWT_SECRET: ${JWT_SECRET:-change-me-this-is-a-development-only-secret-do-not-use-in-production-please}
+
+      # CORS - frontend origin only.
+      CORS_ORIGINS: ${FRONTEND_PUBLIC_URL:-http://localhost:3000}
+
+      # AI service wiring - 'ai' is the docker network alias for the AI container.
+      AI_SERVICE_URL: http://ai:8000
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY:-dev-service-key}
+      # Set to 'false' to use the real RemoteFaceVerifier (calls the Python service)
+      # or 'true' to keep the deterministic StubFaceVerifier.
+      AI_USE_STUB: ${AI_USE_STUB:-false}
+
+    ports:
+      - "${BACKEND_HOST_PORT:-8080}:8080"
+    depends_on:
+      mysql: { condition: service_healthy }
+      ai:    { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/v3/api-docs > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 4s
+      retries: 8
+      start_period: 60s
+    networks:
+      - attendai
+
+  # ----------------------------------------------------------------
+  # Frontend - Next.js dashboards
+  # ----------------------------------------------------------------
+  #
+  # NEXT_PUBLIC_* env vars are baked in at BUILD time, not run time.
+  # The browser - not the container - calls the backend, so the URL it sees
+  # must be reachable from the user's machine. By default that's
+  # http://localhost:8080 (the backend's mapped port).
+  # ----------------------------------------------------------------
+  frontend:
+    build:
+      context: ./attendai-frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE: ${BACKEND_PUBLIC_URL:-http://localhost:8080}
+        NEXT_PUBLIC_MOCK: "false"
+    image: attendai-frontend:latest
+    container_name: attendai-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
+    depends_on:
+      backend: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/login > /dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    networks:
+      - attendai
+
+# ------------------------------------------------------------------
+volumes:
+  mysql_data:        # Database files
+  ai_embeddings:     # Persisted face profiles
+
+networks:
+  attendai:
+    driver: bridge

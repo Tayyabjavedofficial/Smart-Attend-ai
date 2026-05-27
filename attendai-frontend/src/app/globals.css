@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Distinctive typography - Instrument Serif for display, Geist for body, JetBrains for mono */
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  --canvas: #f4f1ea;
+  --canvas-alt: #ede9df;
+  --ink-900: #0d0d0c;
+  --ink-700: #2a2a28;
+  --ink-500: #4f4e4a;
+  --ink-300: #a8a496;
+  --brand-600: #0f6e56;
+  --brand-500: #1d9e75;
+  --brand-50: #e7f4ef;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Geist", system-ui, sans-serif;
+  color: var(--ink-900);
+  background-color: var(--canvas);
+  /* Layered atmospheric background: subtle warm canvas + faint conic gradient
+     + barely-there grain. Cards float on top with frosted-glass effect. */
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(29, 158, 117, 0.10) 0%, transparent 40%),
+    radial-gradient(circle at 95% 100%, rgba(208, 140, 58, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(15, 110, 86, 0.04) 0%, transparent 60%);
+  background-attachment: fixed;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle film grain overlay - gives the canvas a tactile paper-like feel */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  opacity: 0.6;
+}
+
+/* Display font helper */
+.font-display {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Glass surface utility - the signature card style */
+.glass {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 1px 2px rgba(6, 56, 40, 0.04),
+    0 8px 24px rgba(6, 56, 40, 0.06);
+}
+.glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+.glass-dark {
+  background: linear-gradient(180deg, #0a523f 0%, #063828 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 16px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 110, 86, 0.18);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 110, 86, 0.32);
+  background-clip: padding-box;
+}
+
+/* Selection */
+::selection {
+  background: rgba(29, 158, 117, 0.25);
+  color: #063828;
+}
+
+/* Subtle text-balance utility for headings */
+.balance {
+  text-wrap: balance;
+}
+
+/* Live pulse dot - used on active session indicators */
+.dot-live {
+  position: relative;
+}
+.dot-live::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: rgba(29, 158, 117, 0.5);
+  animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping {
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Subtle inner ring on number callouts */
+.numeral {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
+}
