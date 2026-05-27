@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, KeyRound, Mail, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, KeyRound, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Logo } from "@/components/icons/Logo";
@@ -127,6 +128,15 @@ export default function LoginPage() {
               error={error ?? undefined}
             />
 
+            <div className="flex justify-end -mt-1">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-brand-700 hover:text-brand-800 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in…" : (<><span>Sign in</span><ArrowRight className="size-4" /></>)}
             </Button>
@@ -154,12 +164,7 @@ export default function LoginPage() {
                 ))}
               </div>
             </div>
-          ) : (
-            <p className="mt-8 text-xs text-ink-400 text-center">
-              <Mail className="inline size-3 mr-1" />
-              Forgot password? Contact your administrator.
-            </p>
-          )}
+          ) : null}
         </div>
       </section>
     </div>

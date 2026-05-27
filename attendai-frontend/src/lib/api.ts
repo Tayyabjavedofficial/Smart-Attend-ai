@@ -242,6 +242,22 @@ export const api = {
         body: JSON.stringify({ refreshToken }),
       });
     },
+
+    async forgotPassword(email: string): Promise<void> {
+      if (MOCK) { await delay(null, 350); return; }
+      await request("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+    },
+
+    async resetPassword(token: string, newPassword: string): Promise<void> {
+      if (MOCK) { await delay(null, 350); return; }
+      await request("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, newPassword }),
+      });
+    },
   },
 
   // ----- ADMIN -----
