@@ -7,7 +7,7 @@
 # Layer order is chosen so source-only changes don't bust the dependency cache.
 
 # ----- Build stage -----
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
 # Resolve dependencies first - this layer only invalidates when pom.xml changes.
@@ -21,7 +21,7 @@ RUN mvn -B -q package -DskipTests
 RUN ls -la /build/target/*.jar
 
 # ----- Runtime stage -----
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 
 # Drop privileges - never run a JVM as root in containers.
 # UID 1000 is required by Hugging Face Spaces; harmless elsewhere.
