@@ -134,6 +134,12 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
+        <!-- Mail (password reset emails) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Phase 6: report exports -->
         <!-- OpenPDF: LGPL fork of iText 4, fine for student / academic use -->
         <dependency>

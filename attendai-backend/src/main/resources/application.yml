@@ -12,6 +12,23 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  # SMTP for password-reset emails. All values overridable via SPRING_MAIL_* env
+  # vars on the deployed Space. Defaults assume Gmail SMTP.
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 server:
   port: 8080
   servlet:
@@ -41,6 +58,13 @@ app:
       low: 30
       medium: 60
       high: 80
+  password-reset:
+    # Where the email's "reset link" points. Frontend reads ?token=... from URL.
+    reset-url-base: ${APP_RESET_URL_BASE:http://localhost:3000/reset-password}
+    token-expiration-minutes: ${APP_RESET_TOKEN_EXPIRATION_MINUTES:30}
+    # From: address on the outbound mail. For Gmail SMTP this must match
+    # SPRING_MAIL_USERNAME or be a verified alias on that account.
+    mail-from: ${APP_RESET_MAIL_FROM:no-reply@attendai.local}
 
 springdoc:
   swagger-ui:

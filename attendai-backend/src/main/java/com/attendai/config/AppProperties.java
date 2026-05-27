@@ -11,7 +11,8 @@ public record AppProperties(
         Jwt jwt,
         Cors cors,
         Ai ai,
-        Attendance attendance
+        Attendance attendance,
+        PasswordReset passwordReset
 ) {
     public record Jwt(
             String secret,
@@ -36,4 +37,16 @@ public record AppProperties(
     ) {}
 
     public record RiskThresholds(int low, int medium, int high) {}
+
+    /**
+     * Password-reset flow. {@code resetUrlBase} is the front-end URL the email
+     * link points at — the raw token is appended as {@code ?token=...}.
+     * {@code mailFrom} is the From: address (must match your SMTP account for
+     * Gmail / most providers).
+     */
+    public record PasswordReset(
+            String resetUrlBase,
+            long tokenExpirationMinutes,
+            String mailFrom
+    ) {}
 }
