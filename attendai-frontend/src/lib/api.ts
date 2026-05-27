@@ -140,6 +140,18 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   }
 }
 
+// Spring Data's Page<T> wraps results as { content, totalElements, ... }.
+// Components consume plain arrays, so unwrap transparently — and tolerate
+// either shape so endpoints that return List<T> still work.
+export async function requestList<T>(path: string, init: RequestInit = {}): Promise<T[]> {
+  const raw = await request<unknown>(path, init);
+  if (Array.isArray(raw)) return raw as T[];
+  if (raw && typeof raw === "object" && Array.isArray((raw as { content?: unknown }).content)) {
+    return (raw as { content: T[] }).content;
+  }
+  return [];
+}
+
 // ============================================================
 // File download helper (used by the report endpoints)
 // ============================================================
@@ -244,7 +256,7 @@ export const api = {
 
     listStudents: () => MOCK
       ? delay(mock.STUDENTS)
-      : request<mock.StudentRow[]>("/admin/students"),
+      : requestList<mock.StudentRow>("/admin/students"),
 
     createStudent: (body: Partial<mock.StudentRow> & { password?: string }) => MOCK
       ? delay({ ...body, id: Math.floor(Math.random() * 10000), status: "ACTIVE" } as mock.StudentRow)
@@ -260,19 +272,19 @@ export const api = {
 
     listTeachers: () => MOCK
       ? delay(mock.TEACHERS)
-      : request<mock.TeacherRow[]>("/admin/teachers"),
+      : requestList<mock.TeacherRow>("/admin/teachers"),
 
     listCourses: () => MOCK
       ? delay(mock.COURSES)
-      : request<mock.CourseRow[]>("/admin/courses"),
+      : requestList<mock.CourseRow>("/admin/courses"),
 
     listSections: () => MOCK
       ? delay(mock.SECTIONS)
-      : request<mock.SectionRow[]>("/admin/sections"),
+      : requestList<mock.SectionRow>("/admin/sections"),
 
     listAlerts: () => MOCK
       ? delay(mock.ALERTS)
-      : request<mock.AlertRow[]>("/admin/proxy-alerts"),
+      : requestList<mock.AlertRow>("/admin/proxy-alerts"),
 
     resolveAlert: (id: number, status: "RESOLVED" | "DISMISSED", note?: string) => MOCK
       ? delay({ id, status })
@@ -283,18 +295,18 @@ export const api = {
 
     listDevices: () => MOCK
       ? delay(mock.DEVICES)
-      : request<mock.DeviceRow[]>("/admin/devices"),
+      : requestList<mock.DeviceRow>("/admin/devices"),
   },
 
   // ----- TEACHER -----
   teacher: {
     listCourses: () => MOCK
       ? delay(mock.COURSES.slice(0, 4))
-      : request<mock.CourseRow[]>("/teacher/courses"),
+      : requestList<mock.CourseRow>("/teacher/courses"),
 
     listSessions: () => MOCK
       ? delay(mock.SESSIONS)
-      : request<mock.SessionRow[]>("/teacher/attendance-sessions"),
+      : requestList<mock.SessionRow>("/teacher/attendance-sessions"),
 
     sessionLive: (sessionId: number): Promise<LiveCounters> => MOCK
       ? delay({ present: 38, absent: 7, late: 2, suspicious: 0, pendingReview: 0, total: 45 })
@@ -328,11 +340,11 @@ export const api = {
           sectionId: 1,
           sectionName: "BCS-7A",
         })))
-      : request<unknown[]>("/student/courses"),
+      : requestList<unknown>("/student/courses"),
 
     activeSessions: () => MOCK
       ? delay(mock.SESSIONS.filter(s => s.status === "ACTIVE"))
-      : request<mock.SessionRow[]>("/student/active-sessions"),
+      : requestList<mock.SessionRow>("/student/active-sessions"),
 
     history: () => MOCK
       ? delay({ content: mock.STUDENT_HISTORY, totalElements: mock.STUDENT_HISTORY.length })
