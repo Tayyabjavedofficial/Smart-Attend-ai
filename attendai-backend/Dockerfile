@@ -24,7 +24,9 @@ RUN ls -la /build/target/*.jar
 FROM eclipse-temurin:17-jre-jammy
 
 # Drop privileges - never run a JVM as root in containers.
-RUN groupadd --system attendai && useradd --system --gid attendai --create-home attendai
+# UID 1000 is required by Hugging Face Spaces; harmless elsewhere.
+RUN groupadd --gid 1000 attendai \
+ && useradd --uid 1000 --gid attendai --create-home attendai
 WORKDIR /app
 
 # Use a wildcard so the produced *.jar is found regardless of its version.

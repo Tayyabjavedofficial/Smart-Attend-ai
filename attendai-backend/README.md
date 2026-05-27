@@ -1,3 +1,13 @@
+---
+title: AttendAI Backend
+emoji: 🎓
+colorFrom: indigo
+colorTo: blue
+sdk: docker
+app_port: 8080
+pinned: false
+---
+
 # AttendAI Backend
 
 Spring Boot 3 + Java 17 REST API for the AI-Based Smart Attendance Management System.

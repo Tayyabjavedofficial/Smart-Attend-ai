@@ -1,3 +1,13 @@
+---
+title: AttendAI AI Service
+emoji: 🤖
+colorFrom: purple
+colorTo: pink
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # AttendAI · AI Service
 
 FastAPI microservice that owns face registration, face verification, and proxy risk scoring for the AttendAI Smart Attendance System. The Spring Boot backend calls this service over HTTP behind a shared service key.
