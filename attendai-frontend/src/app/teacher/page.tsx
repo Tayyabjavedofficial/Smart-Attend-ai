@@ -227,14 +227,14 @@ export default function TeacherDashboardPage() {
                     <span className="numeral">{s.courseCode}</span> — {s.courseName}
                   </p>
                   <p className="text-[0.72rem] text-ink-400 truncate numeral">
-                    {new Date(s.startTime).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    {s.startTime ? new Date(s.startTime).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Not started"}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <Badge tone={s.status === "ACTIVE" ? "live" : "neutral"} dot={s.status === "ACTIVE"}>
                     {s.status[0] + s.status.slice(1).toLowerCase()}
                   </Badge>
-                  <p className="text-[0.7rem] text-ink-400 mt-1 numeral">{s.present} / {s.total}</p>
+                  <p className="text-[0.7rem] text-ink-400 mt-1 numeral">{s.sectionName}</p>
                 </div>
               </li>
             ))}
