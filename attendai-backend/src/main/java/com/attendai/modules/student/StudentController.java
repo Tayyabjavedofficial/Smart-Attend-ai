@@ -5,11 +5,15 @@ import com.attendai.attendance.marking.MarkingDtos.MarkAttendanceRequest;
 import com.attendai.attendance.marking.MarkingDtos.MarkAttendanceResponse;
 import com.attendai.attendance.session.SessionDtos.SessionDto;
 import com.attendai.ai.AiServiceClient;
+import com.attendai.common.exception.ApiException;
 import com.attendai.common.response.ApiResponse;
 import com.attendai.common.response.PageResponse;
 import com.attendai.common.util.SecurityUtils;
+import com.attendai.domain.attendance.AttendanceChallenge;
+import com.attendai.domain.attendance.AttendanceChallengeRepository;
 import com.attendai.domain.attendance.AttendanceSession;
 import com.attendai.domain.attendance.AttendanceSessionRepository;
+import com.attendai.domain.attendance.ChallengeStatus;
 import com.attendai.domain.attendance.SessionStatus;
 import com.attendai.domain.course.StudentCourseRepository;
 import com.attendai.modules.student.StudentService.*;
@@ -40,6 +44,7 @@ public class StudentController {
     private final StudentService studentService;
     private final AttendanceMarkingService markingService;
     private final AttendanceSessionRepository sessionRepository;
+    private final AttendanceChallengeRepository challengeRepository;
     private final StudentCourseRepository studentCourseRepository;
     private final com.attendai.ai.AiServiceClient aiServiceClient;
 
@@ -66,6 +71,28 @@ public class StudentController {
                 .toList();
         return ApiResponse.ok(result);
     }
+
+    @GetMapping("/active-sessions/{sessionId}/current-challenge")
+    @Operation(summary = "Current open challenge for a session (student-facing; omits the code)")
+    @Transactional(readOnly = true)
+    public ApiResponse<CurrentChallengeDto> currentChallenge(@PathVariable Long sessionId) {
+        var now = java.time.Instant.now();
+        AttendanceChallenge active = challengeRepository.findBySessionIdOrderByStartTimeDesc(sessionId).stream()
+                .filter(c -> c.getStatus() == ChallengeStatus.ACTIVE && c.getExpiryTime().isAfter(now))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NO_ACTIVE_CHALLENGE",
+                        "No active challenge right now — ask your teacher to start one."));
+        // Deliberately does NOT expose challengeCode; the student must type the
+        // code the teacher displays. challengeId is what the mark call needs.
+        return ApiResponse.ok(new CurrentChallengeDto(
+                active.getId(), sessionId, active.getChallengeType().name(),
+                active.getExpiryTime(), active.getDurationSeconds()));
+    }
+
+    public record CurrentChallengeDto(
+            Long challengeId, Long sessionId, String challengeType,
+            java.time.Instant expiryTime, Integer durationSeconds
+    ) {}
 
     @PostMapping("/attendance/mark")
     @Operation(summary = "Submit attendance attempt (API-STUDENT-03)")
