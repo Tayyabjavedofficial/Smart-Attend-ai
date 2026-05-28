@@ -133,3 +133,12 @@ body::before {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum", "ss01";
 }
+
+/* Toast entrance (student live-session notifier) */
+.animate-in-up {
+  animation: in-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes in-up {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}

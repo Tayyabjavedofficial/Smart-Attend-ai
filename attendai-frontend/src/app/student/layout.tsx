@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import type { NavItem } from "@/components/layout/Sidebar";
+import { SessionNotifier } from "@/components/student/SessionNotifier";
 
 const nav: NavItem[] = [
   { href: "/student", label: "Dashboard", icon: LayoutDashboard },
@@ -24,6 +25,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       roleSubtitle="Computer Science · Sem 7"
       requireRole="STUDENT"
     >
+      <SessionNotifier />
       {children}
     </DashboardLayout>
   );
