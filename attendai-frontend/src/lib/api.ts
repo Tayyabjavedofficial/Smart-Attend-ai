@@ -43,6 +43,21 @@ export interface MeProfile {
   email: string;
   role: "ADMIN" | "TEACHER" | "STUDENT";
   status: string;
+  bio?: string | null;
+  avatar?: string | null;
+  // Role-specific; null when not applicable.
+  registrationNumber?: string | null;
+  employeeId?: string | null;
+  department?: string | null;
+  designation?: string | null;
+  semester?: number | null;
+  section?: string | null;
+}
+
+export interface ProfilePatch {
+  fullName: string;
+  bio?: string;
+  avatar?: string;
 }
 
 /** A teacher↔course↔section assignment, mirroring the backend AssignmentDto. */
@@ -287,9 +302,9 @@ export const api = {
       ? delay({ id: 1, fullName: "Demo User", email: "demo@attendai.local", role: "ADMIN", status: "ACTIVE" } as MeProfile)
       : request<MeProfile>("/me"),
 
-    updateProfile: (fullName: string) => MOCK
-      ? delay({ id: 1, fullName, email: "demo@attendai.local", role: "ADMIN", status: "ACTIVE" } as MeProfile)
-      : request<MeProfile>("/me", { method: "PUT", body: JSON.stringify({ fullName }) }),
+    updateProfile: (patch: ProfilePatch) => MOCK
+      ? delay({ id: 1, email: "demo@attendai.local", role: "ADMIN", status: "ACTIVE", ...patch } as MeProfile)
+      : request<MeProfile>("/me", { method: "PUT", body: JSON.stringify(patch) }),
 
     changePassword: (currentPassword: string, newPassword: string) => MOCK
       ? delay(undefined)

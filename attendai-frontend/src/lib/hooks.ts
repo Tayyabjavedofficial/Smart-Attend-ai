@@ -4,7 +4,7 @@ import {
   useMutation, useQuery, useQueryClient,
   type UseMutationOptions, type UseQueryOptions,
 } from "@tanstack/react-query";
-import { api, ApiError, type AssignmentDto } from "@/lib/api";
+import { api, ApiError, type AssignmentDto, type ProfilePatch } from "@/lib/api";
 import type { StudentRow, TeacherRow, CourseRow, SectionRow } from "@/lib/mockData";
 
 /**
@@ -56,10 +56,10 @@ export function useProfile() {
   return useQuery({ queryKey: qkMe, queryFn: api.me.profile });
 }
 
-export function useUpdateProfile(opts?: UseMutationOptions<Awaited<ReturnType<typeof api.me.updateProfile>>, ApiError, string>) {
+export function useUpdateProfile(opts?: UseMutationOptions<Awaited<ReturnType<typeof api.me.updateProfile>>, ApiError, ProfilePatch>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (fullName: string) => api.me.updateProfile(fullName),
+    mutationFn: (patch: ProfilePatch) => api.me.updateProfile(patch),
     onSuccess: (...args) => {
       qc.invalidateQueries({ queryKey: qkMe });
       opts?.onSuccess?.(...args);
