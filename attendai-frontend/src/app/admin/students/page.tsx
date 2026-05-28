@@ -23,7 +23,19 @@ type Mode =
   | null;
 
 export default function AdminStudentsPage() {
-  const { data: rows = [], isLoading, error, refetch } = useStudents();
+  const { data: rawStudents = [], isLoading, error, refetch } = useStudents();
+  // The backend omits attendance/section for freshly created students (no
+  // attendance computed yet). Fill safe defaults so the table's
+  // r.attendance.toFixed() and friends don't throw on undefined.
+  const rows = useMemo<StudentRow[]>(
+    () => rawStudents.map((r) => ({
+      ...r,
+      attendance: typeof r.attendance === "number" ? r.attendance : 0,
+      section: r.section ?? "—",
+      semester: r.semester ?? 1,
+    })),
+    [rawStudents]
+  );
   const createMut = useCreateStudent();
   const updateMut = useUpdateStudent();
   const toggleMut = useDeactivateStudent();
