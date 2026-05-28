@@ -232,6 +232,9 @@ export function usePercentage() {
   return useQuery({ queryKey: qk.student.percentage, queryFn: api.student.percentage });
 }
 
+export const useRegisterFace = (opts?: UseMutationOptions<Awaited<ReturnType<typeof api.student.registerFace>>, ApiError, string[]>) =>
+  useMutation({ mutationFn: (images: string[]) => api.student.registerFace(images), ...opts });
+
 export const useMarkAttendance = (opts?: UseMutationOptions<unknown, ApiError, Parameters<typeof api.student.markAttendance>[0]>) => {
   const qc = useQueryClient();
   return useMutation({

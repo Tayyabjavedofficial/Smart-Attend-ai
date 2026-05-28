@@ -60,6 +60,41 @@ export interface ProfilePatch {
   avatar?: string;
 }
 
+/** An active attendance session a student is enrolled in (backend SessionDto). */
+export interface StudentSession {
+  id: number;
+  sessionCode: string;
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  sectionId: number;
+  sectionName: string;
+  sessionTitle?: string | null;
+  status: string;
+  startTime?: string | null;
+}
+
+/** The currently-open challenge for a session (code intentionally omitted). */
+export interface CurrentChallenge {
+  challengeId: number;
+  sessionId: number;
+  challengeType: string;
+  expiryTime: string;
+  durationSeconds: number;
+}
+
+/** Result of a mark-attendance attempt (backend MarkAttendanceResponse). */
+export interface MarkResult {
+  recordId: number;
+  status: string;
+  riskScore: number;
+  riskLevel: string;
+  faceConfidence?: number | null;
+  factors?: string[];
+  markedAt?: string;
+  message?: string;
+}
+
 /** A trusted device, mirroring the backend DeviceDto. */
 export interface DeviceDto {
   id: number;
@@ -490,8 +525,12 @@ export const api = {
       : requestList<unknown>("/student/courses"),
 
     activeSessions: () => MOCK
-      ? delay(mock.SESSIONS.filter(s => s.status === "ACTIVE"))
-      : requestList<mock.SessionRow>("/student/active-sessions"),
+      ? delay(mock.SESSIONS.filter(s => s.status === "ACTIVE") as unknown as StudentSession[])
+      : requestList<StudentSession>("/student/active-sessions"),
+
+    currentChallenge: (sessionId: number) => MOCK
+      ? delay({ challengeId: 1, sessionId, challengeType: "CODE_QR", expiryTime: new Date(Date.now() + 60000).toISOString(), durationSeconds: 60 } as CurrentChallenge)
+      : request<CurrentChallenge>(`/student/active-sessions/${sessionId}/current-challenge`),
 
     history: () => MOCK
       ? delay({ content: mock.STUDENT_HISTORY, totalElements: mock.STUDENT_HISTORY.length })
@@ -514,8 +553,8 @@ export const api = {
           faceConfidence: 0.94,
           factors: [],
           message: "Attendance marked.",
-        })
-      : request("/student/attendance/mark", { method: "POST", body: JSON.stringify(body) }),
+        } as MarkResult)
+      : request<MarkResult>("/student/attendance/mark", { method: "POST", body: JSON.stringify(body) }),
 
     registerFace: (images: string[]) => MOCK
       ? delay({ profileId: "fp_mock_" + Date.now(), samplesUsed: images.length, qualityScore: 0.9 })

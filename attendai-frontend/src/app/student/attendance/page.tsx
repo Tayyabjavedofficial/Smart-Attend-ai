@@ -1,302 +1,239 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  Radio, ScanFace, QrCode, Hash, ShieldCheck, CheckCircle2,
-  ArrowRight, Sparkles, AlertCircle, Camera, Clock,
+  Radio, ScanFace, CheckCircle2, ArrowRight, ArrowLeft, Sparkles,
+  AlertCircle, Loader2, Clock, ShieldCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { WebcamCapture } from "@/components/webcam/WebcamCapture";
+import { useActiveSessions, useMarkAttendance } from "@/lib/hooks";
+import { api, ApiError, type StudentSession, type CurrentChallenge, type MarkResult } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
-type Step = "idle" | "code" | "face" | "submitting" | "done";
-
 export default function MarkAttendancePage() {
-  const [step, setStep] = useState<Step>("idle");
-  const [secondsLeft, setSecondsLeft] = useState(42);
+  const { data: sessions = [], isLoading, error, refetch } = useActiveSessions();
+  const markMut = useMarkAttendance();
+
+  const [selected, setSelected] = useState<StudentSession | null>(null);
+  const [challenge, setChallenge] = useState<CurrentChallenge | null>(null);
+  const [challengeError, setChallengeError] = useState<string | null>(null);
+  const [loadingChallenge, setLoadingChallenge] = useState(false);
+
   const [code, setCode] = useState("");
-  const [faceCaptured, setFaceCaptured] = useState(false);
+  const [face, setFace] = useState<string | null>(null);
+  const [result, setResult] = useState<MarkResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Countdown timer for the active session
+  // Countdown to the challenge expiry.
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (step === "done") return;
-    const id = setInterval(() => setSecondsLeft(s => Math.max(0, s - 1)), 1000);
+    if (!challenge) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [step]);
+  }, [challenge]);
+  const secondsLeft = useMemo(() => {
+    if (!challenge) return 0;
+    return Math.max(0, Math.round((new Date(challenge.expiryTime).getTime() - now) / 1000));
+  }, [challenge, now]);
 
-  const submit = () => {
-    setStep("submitting");
-    setTimeout(() => setStep("done"), 1400);
+  const join = async (s: StudentSession) => {
+    setSelected(s);
+    setChallenge(null); setChallengeError(null); setLoadingChallenge(true);
+    setCode(""); setFace(null); setResult(null); setSubmitError(null);
+    try {
+      setChallenge(await api.student.currentChallenge(s.id));
+    } catch (e) {
+      setChallengeError(e instanceof ApiError ? e.message : "No active challenge right now.");
+    } finally {
+      setLoadingChallenge(false);
+    }
   };
 
-  const reset = () => {
-    setStep("idle");
-    setCode("");
-    setFaceCaptured(false);
-    setSecondsLeft(42);
+  const back = () => { setSelected(null); setChallenge(null); setResult(null); };
+
+  const submit = () => {
+    if (!selected || !challenge) return;
+    setSubmitError(null);
+    markMut.mutate(
+      { sessionId: selected.id, challengeId: challenge.challengeId, submittedCode: code.trim(), faceImage: face ?? undefined },
+      {
+        onSuccess: (r) => setResult(r as MarkResult),
+        onError: (e) => setSubmitError(e instanceof ApiError ? e.message : "Could not mark attendance."),
+      }
+    );
   };
 
   return (
     <>
       <PageHeader
         title="Mark Attendance"
-        subtitle="Complete the verification flow before the timer expires."
+        subtitle="Pick your live session, enter the code, and verify your face."
         icon={Radio}
         crumbs={[{ label: "Student", href: "/student" }, { label: "Mark Attendance" }]}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
-        {/* Active session + step flow */}
-        <div className="space-y-4">
-          {/* Active session banner */}
-          <Card className="relative overflow-hidden p-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800" />
-            <svg className="absolute -right-12 -top-12 size-72 opacity-10" viewBox="0 0 200 200" fill="none">
-              <circle cx="100" cy="100" r="98" stroke="white" strokeWidth="0.5" />
-              <circle cx="100" cy="100" r="72" stroke="white" strokeWidth="0.5" />
-              <circle cx="100" cy="100" r="46" stroke="white" strokeWidth="0.5" />
-            </svg>
-            <div className="relative p-5 text-white flex items-center gap-5">
-              <div className="size-12 rounded-xl bg-white/12 ring-1 ring-white/20 grid place-items-center shrink-0">
-                <Radio className="size-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <Badge tone="live" dot>Live now</Badge>
-                <h2 className="font-display text-[1.6rem] leading-tight tracking-tight mt-1">
-                  CS201 — Artificial Intelligence
-                </h2>
-                <p className="text-white/70 text-xs">Dr. Sarah Johnson · Section BCS-7A · Started 10:15 AM</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-[0.6rem] uppercase tracking-wider text-white/45">Expires in</p>
-                <p className={cn(
-                  "font-display text-[2rem] leading-none numeral mt-0.5",
-                  secondsLeft <= 10 ? "text-rose-200 animate-pulse-soft" : "text-white"
-                )}>
-                  00:{secondsLeft.toString().padStart(2, "0")}
-                </p>
-              </div>
+      {/* RESULT */}
+      {result ? (
+        <Card className="max-w-xl">
+          <div className="text-center py-6">
+            <div className={cn("size-16 mx-auto rounded-full grid place-items-center mb-4 ring-4",
+              result.status === "PRESENT" || result.status === "VERIFIED"
+                ? "bg-brand-50 ring-brand-100/60"
+                : result.status === "PENDING_REVIEW" || result.status === "SUSPICIOUS"
+                ? "bg-amber-50 ring-amber-100/60" : "bg-rose-50 ring-rose-100/60")}>
+              <CheckCircle2 className={cn("size-8",
+                result.status === "PRESENT" || result.status === "VERIFIED" ? "text-brand-600"
+                  : result.status === "PENDING_REVIEW" || result.status === "SUSPICIOUS" ? "text-amber-600" : "text-rose-600")} />
             </div>
-          </Card>
-
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 px-1">
-            {[
-              { n: 1, label: "Enter code", active: step === "code" || step === "face" || step === "submitting" || step === "done" || step === "idle" },
-              { n: 2, label: "Verify face", active: step === "face" || step === "submitting" || step === "done" },
-              { n: 3, label: "Submit", active: step === "submitting" || step === "done" },
-            ].map((s, i, arr) => (
-              <div key={s.n} className="flex items-center gap-2 flex-1">
-                <div className={cn(
-                  "size-7 rounded-full grid place-items-center text-xs font-semibold transition-all",
-                  s.active ? "bg-brand-600 text-white" : "bg-ink-200/60 text-ink-400"
-                )}>
-                  {s.n}
+            <Badge tone={result.status === "PRESENT" || result.status === "VERIFIED" ? "success" : "warning"} dot>
+              {result.status}
+            </Badge>
+            <p className="font-display text-[1.8rem] leading-tight text-ink-900 mt-3">
+              {result.message || "Attendance recorded."}
+            </p>
+            <div className="grid grid-cols-3 gap-2 mt-6 max-w-md mx-auto text-left">
+              <ResultStat label="Face match" value={result.faceConfidence != null ? `${Math.round(result.faceConfidence * 100)}%` : "—"} />
+              <ResultStat label="Risk score" value={`${result.riskScore} / 100`} />
+              <ResultStat label="Risk level" value={result.riskLevel ?? "—"} />
+            </div>
+            <Button variant="secondary" className="mt-6" onClick={back}>Mark another session</Button>
+          </div>
+        </Card>
+      ) : !selected ? (
+        /* SESSION PICKER */
+        error ? (
+          <ErrorBox error={error as Error} onRetry={() => refetch()} />
+        ) : isLoading ? (
+          <LoadingBox />
+        ) : sessions.length === 0 ? (
+          <div className="glass rounded-2xl p-12 text-center">
+            <Radio className="size-8 text-ink-300 mx-auto mb-2" />
+            <p className="font-display text-xl text-ink-700">No live sessions</p>
+            <p className="text-sm text-ink-400 mt-1">
+              When a teacher starts a session for one of your enrolled courses, it&apos;ll show up here.
+            </p>
+            <Button variant="secondary" className="mt-4" onClick={() => refetch()}>Refresh</Button>
+          </div>
+        ) : (
+          <div className="grid gap-3 max-w-2xl">
+            {sessions.map((s) => (
+              <Card key={s.id} className="flex items-center gap-4">
+                <div className="size-11 rounded-xl bg-brand-50 text-brand-700 grid place-items-center shrink-0">
+                  <Radio className="size-5" />
                 </div>
-                <span className={cn("text-xs flex-1", s.active ? "text-ink-900 font-medium" : "text-ink-400")}>
-                  {s.label}
-                </span>
-                {i < arr.length - 1 ? (
-                  <div className={cn(
-                    "h-0.5 flex-1 rounded-full transition-all",
-                    s.active && arr[i + 1].active ? "bg-brand-500" : "bg-ink-200/60"
-                  )} />
-                ) : null}
-              </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge tone="live" dot>Live</Badge>
+                    <span className="text-[0.7rem] text-ink-400 numeral">{s.sessionCode}</span>
+                  </div>
+                  <p className="text-[0.95rem] text-ink-900 mt-0.5 truncate">
+                    <span className="numeral font-medium">{s.courseCode}</span> — {s.courseName}
+                  </p>
+                  <p className="text-xs text-ink-400">{s.sectionName}{s.sessionTitle ? ` · ${s.sessionTitle}` : ""}</p>
+                </div>
+                <Button onClick={() => join(s)}>Join <ArrowRight className="size-4" /></Button>
+              </Card>
             ))}
           </div>
+        )
+      ) : (
+        /* MARK FLOW */
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4 items-start max-w-4xl">
+          <Card>
+            <button onClick={back} className="inline-flex items-center gap-1.5 text-xs text-ink-500 hover:text-ink-800 mb-3">
+              <ArrowLeft className="size-3" /> Back to sessions
+            </button>
+            <CardHeader
+              title={`${selected.courseCode} — ${selected.courseName}`}
+              subtitle={`${selected.sectionName} · ${selected.sessionCode}`}
+            />
 
-          {/* Step content */}
-          {step !== "done" ? (
+            {loadingChallenge ? (
+              <div className="flex items-center gap-2 text-sm text-ink-400 py-6"><Loader2 className="size-4 animate-spin" /> Checking for an open challenge…</div>
+            ) : challengeError ? (
+              <div className="p-4 rounded-xl bg-amber-50/70 ring-1 ring-amber-200/60 text-sm text-amber-900">
+                <AlertCircle className="inline size-4 mr-1" /> {challengeError}
+                <div className="mt-3"><Button variant="secondary" size="sm" onClick={() => join(selected)}>Retry</Button></div>
+              </div>
+            ) : challenge ? (
+              <>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-ink-50/60 mb-4">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-ink-500"><Clock className="size-3.5" /> Closes in</span>
+                  <span className={cn("font-display text-xl numeral", secondsLeft <= 10 ? "text-rose-600 animate-pulse-soft" : "text-ink-900")}>
+                    {Math.floor(secondsLeft / 60)}:{(secondsLeft % 60).toString().padStart(2, "0")}
+                  </span>
+                </div>
+                <Input
+                  label="Live Code"
+                  placeholder="ABCDEF"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  maxLength={12}
+                  className="font-mono text-lg tracking-[0.25em] text-center"
+                  autoFocus
+                />
+                <p className="text-xs text-ink-400 mt-2">Type the code your teacher is displaying.</p>
+              </>
+            ) : null}
+          </Card>
+
+          {challenge ? (
             <Card>
-              {step === "idle" || step === "code" ? (
-                <>
-                  <CardHeader
-                    title="Step 1 · Enter the live code"
-                    subtitle="Your teacher reveals a 6-character code at the start of the challenge."
-                  />
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <Input
-                        label="Live Code"
-                        placeholder="ABCDEF"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value.toUpperCase())}
-                        maxLength={6}
-                        className="font-mono text-lg tracking-[0.3em] text-center numeral"
-                        autoFocus
-                      />
-                    </div>
-                    <span className="text-ink-300 mb-3">or</span>
-                    <Button variant="secondary" className="mb-0.5">
-                      <QrCode className="size-4" />
-                      Scan QR
-                    </Button>
-                  </div>
-                  <Button
-                    className="w-full mt-4"
-                    disabled={code.length !== 6}
-                    onClick={() => setStep("face")}
-                  >
-                    Continue to face verification
-                    <ArrowRight className="size-4" />
-                  </Button>
-                </>
-              ) : null}
+              <CardHeader title="Verify your face" subtitle="Look at the camera and capture a clear photo." />
+              <WebcamCapture onCapture={setFace} onClear={() => setFace(null)} captureLabel="Capture face" />
 
-              {step === "face" ? (
-                <>
-                  <CardHeader
-                    title="Step 2 · Face verification"
-                    subtitle="A quick scan against your registered face profile."
-                  />
-                  <div className="relative">
-                    <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-ink-900 via-brand-900 to-brand-800 grid place-items-center relative overflow-hidden">
-                      {/* Scanning overlay */}
-                      <svg className="absolute inset-0 size-full opacity-20" viewBox="0 0 400 300" fill="none">
-                        <circle cx="200" cy="150" r="120" stroke="white" strokeWidth="0.5" strokeDasharray="2 4" />
-                        <circle cx="200" cy="150" r="90" stroke="white" strokeWidth="0.5" />
-                        <circle cx="200" cy="150" r="60" stroke="white" strokeWidth="0.5" />
-                      </svg>
-                      <div className="relative text-center">
-                        <div className="size-28 mx-auto rounded-full bg-white/8 ring-2 ring-white/15 grid place-items-center mb-3">
-                          {faceCaptured
-                            ? <CheckCircle2 className="size-10 text-brand-300" />
-                            : <ScanFace className="size-10 text-white/60" />}
-                        </div>
-                        <p className="text-white/70 text-xs">
-                          {faceCaptured
-                            ? "Face captured · 94.2% confidence"
-                            : "Look directly at your camera"}
-                        </p>
-                      </div>
+              {submitError ? <div className="mt-3"><Badge tone="danger">{submitError}</Badge></div> : null}
 
-                      {/* Decorative scan lines */}
-                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/40 to-transparent animate-pulse-soft" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    {!faceCaptured ? (
-                      <>
-                        <Button variant="secondary" onClick={() => setStep("code")}>
-                          Back
-                        </Button>
-                        <Button onClick={() => setFaceCaptured(true)}>
-                          <Camera className="size-4" />
-                          Capture
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button variant="secondary" onClick={() => setFaceCaptured(false)}>
-                          Retake
-                        </Button>
-                        <Button onClick={submit}>
-                          Submit attendance
-                          <ArrowRight className="size-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </>
-              ) : null}
-
-              {step === "submitting" ? (
-                <div className="text-center py-12">
-                  <div className="size-16 mx-auto rounded-full bg-brand-50 grid place-items-center mb-4">
-                    <Sparkles className="size-7 text-brand-600 animate-pulse-soft" />
-                  </div>
-                  <p className="font-display text-xl text-ink-900">Verifying…</p>
-                  <p className="text-sm text-ink-500 mt-1">Running face match and AI risk analysis</p>
-                </div>
-              ) : null}
-            </Card>
-          ) : (
-            <Card>
-              <div className="text-center py-6">
-                <div className="size-16 mx-auto rounded-full bg-brand-50 grid place-items-center mb-4 ring-4 ring-brand-100/60">
-                  <CheckCircle2 className="size-8 text-brand-600" />
-                </div>
-                <Badge tone="success" dot>Attendance marked</Badge>
-                <p className="font-display text-[1.8rem] leading-tight text-ink-900 mt-3">
-                  You're marked present.
-                </p>
-                <p className="text-sm text-ink-500 mt-1">CS201 · {new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</p>
-
-                <div className="grid grid-cols-3 gap-2 mt-6 max-w-md mx-auto text-left">
-                  <ResultStat label="Face match" value="94.2%" tone="brand" />
-                  <ResultStat label="Risk score" value="12 / 100" tone="brand" />
-                  <ResultStat label="Status" value="Verified" tone="brand" />
-                </div>
-
-                <Button variant="secondary" className="mt-6" onClick={reset}>
-                  Mark another session
-                </Button>
+              <Button
+                className="w-full mt-4"
+                disabled={!code || !face || secondsLeft === 0 || markMut.isPending}
+                onClick={submit}
+              >
+                {markMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                {markMut.isPending ? "Verifying…" : secondsLeft === 0 ? "Challenge expired" : "Submit attendance"}
+              </Button>
+              <div className="mt-3 flex items-center gap-2 text-[0.7rem] text-ink-400">
+                <ShieldCheck className="size-3.5" /> Your face is matched against your registered profile.
+                <a href="/student/face" className="text-brand-700 hover:underline ml-auto">Set up profile</a>
               </div>
             </Card>
-          )}
+          ) : null}
         </div>
-
-        {/* Right column - help + status */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader title="Verification checklist" subtitle="What we're checking before marking you present." />
-            <ul className="space-y-2.5 text-sm">
-              {[
-                { icon: Hash, label: "Live code matches", done: code.length === 6 },
-                { icon: ScanFace, label: "Face matches your profile", done: faceCaptured },
-                { icon: ShieldCheck, label: "Device is trusted", done: true },
-                { icon: Sparkles, label: "AI risk score is low", done: step === "done" },
-              ].map((c, i) => {
-                const Icon = c.icon;
-                return (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className={cn(
-                      "size-7 rounded-lg grid place-items-center shrink-0",
-                      c.done ? "bg-brand-50 text-brand-700" : "bg-ink-100 text-ink-400"
-                    )}>
-                      <Icon className="size-3.5" />
-                    </div>
-                    <span className={cn("text-[0.82rem]", c.done ? "text-ink-900" : "text-ink-500")}>{c.label}</span>
-                    {c.done ? <CheckCircle2 className="size-4 text-brand-600 ml-auto" /> : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-
-          <Card>
-            <CardHeader title="Troubleshooting" />
-            <ul className="space-y-3 text-xs text-ink-500">
-              <li className="flex items-start gap-2.5">
-                <AlertCircle className="size-3.5 text-accent-amber mt-0.5 shrink-0" />
-                <p>Camera not working? Allow access in your browser's site permissions and reload.</p>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <Clock className="size-3.5 text-accent-amber mt-0.5 shrink-0" />
-                <p>Missed the window? Submit a correction request and your teacher will review.</p>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <ScanFace className="size-3.5 text-brand-600 mt-0.5 shrink-0" />
-                <p>Face not matching? Re-register your profile in <strong>Face Profile</strong>.</p>
-              </li>
-            </ul>
-          </Card>
-        </div>
-      </div>
+      )}
     </>
   );
 }
 
-function ResultStat({ label, value, tone = "brand" }: { label: string; value: string; tone?: "brand" | "neutral" }) {
+function ResultStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="p-2.5 rounded-xl bg-brand-50/60 ring-1 ring-brand-100/60">
       <p className="text-[0.6rem] uppercase tracking-wider text-brand-600">{label}</p>
       <p className="font-medium text-sm text-ink-900 mt-0.5 numeral">{value}</p>
+    </div>
+  );
+}
+
+function LoadingBox() {
+  return (
+    <div className="glass rounded-2xl p-12 text-center">
+      <Loader2 className="size-6 text-brand-600 animate-spin mx-auto mb-2" />
+      <p className="text-sm text-ink-500">Loading sessions…</p>
+    </div>
+  );
+}
+
+function ErrorBox({ error, onRetry }: { error: Error; onRetry: () => void }) {
+  return (
+    <div className="glass rounded-2xl p-12 text-center">
+      <AlertCircle className="size-7 text-accent-rose mx-auto mb-2" />
+      <p className="font-display text-xl text-ink-900">Couldn&apos;t load sessions</p>
+      <p className="text-sm text-ink-500 mt-1 mb-4">{error.message}</p>
+      <Button variant="secondary" onClick={onRetry}>Try again</Button>
     </div>
   );
 }
