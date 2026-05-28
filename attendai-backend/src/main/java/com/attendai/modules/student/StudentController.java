@@ -72,6 +72,30 @@ public class StudentController {
         return ApiResponse.ok(result);
     }
 
+    @GetMapping("/available-classes")
+    @Operation(summary = "List course/section classes the student can self-enroll in")
+    public ApiResponse<List<StudentService.AvailableClass>> availableClasses() {
+        return ApiResponse.ok(studentService.availableClasses());
+    }
+
+    @PostMapping("/enroll")
+    @Operation(summary = "Self-enroll in a course/section")
+    public ApiResponse<StudentService.CourseSummary> enrollSelf(@Valid @RequestBody SelfEnrollRequest req) {
+        return ApiResponse.ok(studentService.enrollSelf(req.courseId(), req.sectionId()));
+    }
+
+    @DeleteMapping("/enroll/{enrollmentId}")
+    @Operation(summary = "Drop a class the student enrolled in")
+    public ApiResponse<Void> unenrollSelf(@PathVariable Long enrollmentId) {
+        studentService.unenrollSelf(enrollmentId);
+        return ApiResponse.success("Dropped");
+    }
+
+    public record SelfEnrollRequest(
+            @jakarta.validation.constraints.NotNull Long courseId,
+            @jakarta.validation.constraints.NotNull Long sectionId
+    ) {}
+
     @GetMapping("/active-sessions/{sessionId}/current-challenge")
     @Operation(summary = "Current open challenge for a session (student-facing; omits the code)")
     @Transactional(readOnly = true)

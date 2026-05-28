@@ -1,12 +1,19 @@
 package com.attendai.modules.student;
 
 import com.attendai.common.exception.ApiException;
+import com.attendai.common.exception.ResourceNotFoundException;
 import com.attendai.common.util.CodeGenerator;
 import com.attendai.common.util.SecurityUtils;
 import com.attendai.domain.attendance.AttendanceRecord;
 import com.attendai.domain.attendance.AttendanceRecordRepository;
 import com.attendai.domain.attendance.AttendanceStatus;
+import com.attendai.domain.course.Course;
+import com.attendai.domain.course.CourseRepository;
+import com.attendai.domain.course.Section;
+import com.attendai.domain.course.SectionRepository;
+import com.attendai.domain.course.StudentCourse;
 import com.attendai.domain.course.StudentCourseRepository;
+import com.attendai.domain.course.TeacherCourseRepository;
 import com.attendai.domain.security.FaceProfile;
 import com.attendai.domain.security.FaceProfileRepository;
 import com.attendai.domain.security.TrustedDevice;
@@ -19,9 +26,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +43,9 @@ public class StudentService {
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final TrustedDeviceRepository trustedDeviceRepository;
     private final FaceProfileRepository faceProfileRepository;
+    private final TeacherCourseRepository teacherCourseRepository;
+    private final CourseRepository courseRepository;
+    private final SectionRepository sectionRepository;
 
     /** Resolves the {@link Student} for the authenticated user. */
     @Transactional(readOnly = true)
@@ -59,6 +73,58 @@ public class StudentService {
                         sc.getSection().getId(),
                         sc.getSection().getSectionName()))
                 .toList();
+    }
+
+    // -------- Self-enrollment --------
+
+    public record AvailableClass(
+            Long courseId, String courseCode, String courseName,
+            Long sectionId, String sectionName, String teacherName, boolean enrolled
+    ) {}
+
+    /** Distinct course+section classes (offered by teachers) the student can join. */
+    @Transactional(readOnly = true)
+    public List<AvailableClass> availableClasses() {
+        Long studentId = currentStudent().getId();
+        Set<String> enrolledKeys = studentCourseRepository.findByStudentId(studentId).stream()
+                .map(sc -> sc.getCourse().getId() + ":" + sc.getSection().getId())
+                .collect(Collectors.toSet());
+
+        Map<String, AvailableClass> distinct = new LinkedHashMap<>();
+        teacherCourseRepository.findAll().forEach(tc -> {
+            String key = tc.getCourse().getId() + ":" + tc.getSection().getId();
+            distinct.putIfAbsent(key, new AvailableClass(
+                    tc.getCourse().getId(), tc.getCourse().getCourseCode(), tc.getCourse().getCourseName(),
+                    tc.getSection().getId(), tc.getSection().getSectionName(),
+                    tc.getTeacher().getUser().getFullName(), enrolledKeys.contains(key)));
+        });
+        return new ArrayList<>(distinct.values());
+    }
+
+    @Transactional
+    public CourseSummary enrollSelf(Long courseId, Long sectionId) {
+        Student student = currentStudent();
+        if (studentCourseRepository.existsByStudentIdAndCourseIdAndSectionId(student.getId(), courseId, sectionId)) {
+            throw new ApiException(HttpStatus.CONFLICT, "ALREADY_ENROLLED", "You're already enrolled in this class.");
+        }
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", courseId));
+        Section section = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Section", sectionId));
+        StudentCourse sc = studentCourseRepository.save(StudentCourse.builder()
+                .student(student).course(course).section(section).build());
+        return new CourseSummary(sc.getId(), course.getId(), course.getCourseCode(),
+                course.getCourseName(), section.getId(), section.getSectionName());
+    }
+
+    @Transactional
+    public void unenrollSelf(Long enrollmentId) {
+        StudentCourse sc = studentCourseRepository.findById(enrollmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment", enrollmentId));
+        if (!sc.getStudent().getId().equals(currentStudent().getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "NOT_YOUR_ENROLLMENT", "You can only drop your own classes.");
+        }
+        studentCourseRepository.deleteById(enrollmentId);
     }
 
     public record AttendanceHistoryRow(
