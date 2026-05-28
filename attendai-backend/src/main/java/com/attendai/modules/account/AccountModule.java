@@ -4,6 +4,10 @@ import com.attendai.common.exception.ApiException;
 import com.attendai.common.response.ApiResponse;
 import com.attendai.common.util.SecurityUtils;
 import com.attendai.domain.user.Role;
+import com.attendai.domain.user.Student;
+import com.attendai.domain.user.StudentRepository;
+import com.attendai.domain.user.Teacher;
+import com.attendai.domain.user.TeacherRepository;
 import com.attendai.domain.user.User;
 import com.attendai.domain.user.UserRepository;
 import com.attendai.domain.user.UserStatus;
@@ -27,13 +31,21 @@ import org.springframework.web.bind.annotation.*;
  */
 public class AccountModule {
 
-    public record MeDto(Long id, String fullName, String email, Role role, UserStatus status) {
-        public static MeDto from(User u) {
-            return new MeDto(u.getId(), u.getFullName(), u.getEmail(), u.getRole(), u.getStatus());
-        }
-    }
+    public record MeDto(
+            Long id, String fullName, String email, Role role, UserStatus status,
+            String bio, String avatar,
+            // Role-specific fields; null when not applicable.
+            String registrationNumber, String employeeId,
+            String department, String designation,
+            Integer semester, String section
+    ) {}
 
-    public record UpdateProfileRequest(@NotBlank @Size(max = 120) String fullName) {}
+    public record UpdateProfileRequest(
+            @NotBlank @Size(max = 120) String fullName,
+            @Size(max = 2000) String bio,
+            // Base64 data URL. Loose cap (~3.5MB encoded) — the client compresses first.
+            @Size(max = 5_000_000) String avatar
+    ) {}
 
     public record ChangePasswordRequest(
             @NotBlank String currentPassword,
@@ -45,18 +57,26 @@ public class AccountModule {
     public static class AccountService {
 
         private final UserRepository userRepository;
+        private final StudentRepository studentRepository;
+        private final TeacherRepository teacherRepository;
         private final PasswordEncoder passwordEncoder;
 
         @Transactional(readOnly = true)
         public MeDto me() {
-            return MeDto.from(load());
+            return toDto(load());
         }
 
         @Transactional
         public MeDto updateProfile(UpdateProfileRequest req) {
             User u = load();
             u.setFullName(req.fullName());
-            return MeDto.from(userRepository.save(u));
+            u.setBio(req.bio());
+            // Only overwrite the avatar when one is supplied, so saving the
+            // profile without re-picking a photo keeps the existing one.
+            if (req.avatar() != null && !req.avatar().isBlank()) {
+                u.setAvatar(req.avatar());
+            }
+            return toDto(userRepository.save(u));
         }
 
         @Transactional
@@ -67,6 +87,36 @@ public class AccountModule {
             }
             u.setPasswordHash(passwordEncoder.encode(req.newPassword()));
             userRepository.save(u);
+        }
+
+        /** Builds the DTO, folding in role-specific details from student/teacher. */
+        private MeDto toDto(User u) {
+            String registrationNumber = null, employeeId = null,
+                    department = null, designation = null, section = null;
+            Integer semester = null;
+
+            if (u.getRole() == Role.STUDENT) {
+                Student s = studentRepository.findByUserId(u.getId()).orElse(null);
+                if (s != null) {
+                    registrationNumber = s.getRegistrationNumber();
+                    department = s.getDepartment();
+                    semester = s.getSemester();
+                    section = s.getSection() != null ? s.getSection().getSectionName() : null;
+                }
+            } else if (u.getRole() == Role.TEACHER) {
+                Teacher t = teacherRepository.findByUserId(u.getId()).orElse(null);
+                if (t != null) {
+                    employeeId = t.getEmployeeId();
+                    department = t.getDepartment();
+                    designation = t.getDesignation();
+                }
+            }
+
+            return new MeDto(
+                    u.getId(), u.getFullName(), u.getEmail(), u.getRole(), u.getStatus(),
+                    u.getBio(), u.getAvatar(),
+                    registrationNumber, employeeId, department, designation, semester, section
+            );
         }
 
         private User load() {

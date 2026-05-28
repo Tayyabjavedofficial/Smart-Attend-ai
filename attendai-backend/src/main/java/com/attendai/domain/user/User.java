@@ -49,6 +49,13 @@ public class User extends Auditable {
     @Column(name = "last_login_at")
     private java.time.Instant lastLoginAt;
 
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
+    // Base64 data URL of the user's avatar. MEDIUMTEXT to fit a compressed image.
+    @Column(columnDefinition = "MEDIUMTEXT")
+    private String avatar;
+
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
     }
