@@ -36,6 +36,18 @@ export class ApiError extends Error {
   }
 }
 
+/** A teacher↔course↔section assignment, mirroring the backend AssignmentDto. */
+export interface AssignmentDto {
+  id: number;
+  teacherId: number;
+  teacherName: string;
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  sectionId: number;
+  sectionName: string;
+}
+
 // ============================================================
 // Request wrapper with 401 → refresh → retry
 // ============================================================
@@ -321,6 +333,27 @@ export const api = {
     listSections: () => MOCK
       ? delay(mock.SECTIONS)
       : requestList<mock.SectionRow>("/admin/sections"),
+
+    createSection: (body: Partial<mock.SectionRow>) => MOCK
+      ? delay({ ...body, id: Math.floor(Math.random() * 10000) } as mock.SectionRow)
+      : request<mock.SectionRow>("/admin/sections", { method: "POST", body: JSON.stringify(body) }),
+
+    deleteSection: (id: number) => MOCK
+      ? delay({ id })
+      : request<void>(`/admin/sections/${id}`, { method: "DELETE" }),
+
+    // ----- Teacher ↔ course ↔ section assignments -----
+    listAssignments: () => MOCK
+      ? delay([] as AssignmentDto[])
+      : requestList<AssignmentDto>("/admin/teacher-assignments"),
+
+    createAssignment: (body: { teacherId: number; courseId: number; sectionId: number }) => MOCK
+      ? delay({ id: Math.floor(Math.random() * 10000), ...body } as unknown as AssignmentDto)
+      : request<AssignmentDto>("/admin/teacher-assignments", { method: "POST", body: JSON.stringify(body) }),
+
+    deleteAssignment: (id: number) => MOCK
+      ? delay({ id })
+      : request<void>(`/admin/teacher-assignments/${id}`, { method: "DELETE" }),
 
     listAlerts: () => MOCK
       ? delay(mock.ALERTS)

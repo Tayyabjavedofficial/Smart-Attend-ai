@@ -4,8 +4,8 @@ import {
   useMutation, useQuery, useQueryClient,
   type UseMutationOptions, type UseQueryOptions,
 } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/api";
-import type { StudentRow, TeacherRow, CourseRow } from "@/lib/mockData";
+import { api, ApiError, type AssignmentDto } from "@/lib/api";
+import type { StudentRow, TeacherRow, CourseRow, SectionRow } from "@/lib/mockData";
 
 /**
  * Centralised query-key tree. Keeping these as constants prevents the
@@ -20,6 +20,7 @@ export const qk = {
     sections: ["admin", "sections"] as const,
     alerts:   ["admin", "alerts"]   as const,
     devices:  ["admin", "devices"]  as const,
+    assignments: ["admin", "assignments"] as const,
   },
   teacher: {
     courses:  ["teacher", "courses"]  as const,
@@ -127,6 +128,22 @@ export const useUpdateCourse = (opts?: UseMutationOptions<CourseRow, ApiError, {
 
 export const useDeleteCourse = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
   useInvalidating(api.admin.deleteCourse, qk.admin.courses, opts);
+
+export const useCreateSection = (opts?: UseMutationOptions<SectionRow, ApiError, Partial<SectionRow>>) =>
+  useInvalidating(api.admin.createSection, qk.admin.sections, opts);
+
+export const useDeleteSection = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
+  useInvalidating(api.admin.deleteSection, qk.admin.sections, opts);
+
+export function useAssignments() {
+  return useQuery({ queryKey: qk.admin.assignments, queryFn: api.admin.listAssignments });
+}
+
+export const useCreateAssignment = (opts?: UseMutationOptions<AssignmentDto, ApiError, { teacherId: number; courseId: number; sectionId: number }>) =>
+  useInvalidating(api.admin.createAssignment, qk.admin.assignments, opts);
+
+export const useDeleteAssignment = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
+  useInvalidating(api.admin.deleteAssignment, qk.admin.assignments, opts);
 
 export const useResolveAlert = (opts?: UseMutationOptions<unknown, ApiError, { id: number; status: "RESOLVED" | "DISMISSED"; note?: string }>) =>
   useInvalidating(

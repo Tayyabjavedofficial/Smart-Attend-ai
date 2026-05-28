@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  LayoutDashboard, Users, GraduationCap, BookOpen, Layers,
+  LayoutDashboard, Users, GraduationCap, BookOpen, Layers, Link2,
   AlertTriangle, ShieldCheck, FileBarChart, Settings,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -13,6 +13,7 @@ const nav: NavItem[] = [
   { href: "/admin/teachers", label: "Teachers", icon: GraduationCap },
   { href: "/admin/courses", label: "Courses", icon: BookOpen },
   { href: "/admin/sections", label: "Sections", icon: Layers },
+  { href: "/admin/assignments", label: "Assignments", icon: Link2 },
   { href: "/admin/alerts", label: "Proxy Alerts", icon: AlertTriangle, badge: 5 },
   { href: "/admin/devices", label: "Devices", icon: ShieldCheck },
   { href: "/admin/reports", label: "Reports", icon: FileBarChart },
