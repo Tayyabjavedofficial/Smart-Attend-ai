@@ -306,6 +306,18 @@ export const api = {
       ? delay(mock.COURSES)
       : requestList<mock.CourseRow>("/admin/courses"),
 
+    createCourse: (body: Partial<mock.CourseRow>) => MOCK
+      ? delay({ ...body, id: Math.floor(Math.random() * 10000) } as mock.CourseRow)
+      : request<mock.CourseRow>("/admin/courses", { method: "POST", body: JSON.stringify(body) }),
+
+    updateCourse: (id: number, body: Partial<mock.CourseRow>) => MOCK
+      ? delay({ ...body, id } as mock.CourseRow)
+      : request<mock.CourseRow>(`/admin/courses/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+
+    deleteCourse: (id: number) => MOCK
+      ? delay({ id })
+      : request<void>(`/admin/courses/${id}`, { method: "DELETE" }),
+
     listSections: () => MOCK
       ? delay(mock.SECTIONS)
       : requestList<mock.SectionRow>("/admin/sections"),
