@@ -5,7 +5,7 @@ import {
   type UseMutationOptions, type UseQueryOptions,
 } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/api";
-import type { StudentRow } from "@/lib/mockData";
+import type { StudentRow, TeacherRow } from "@/lib/mockData";
 
 /**
  * Centralised query-key tree. Keeping these as constants prevents the
@@ -101,6 +101,19 @@ export const useUpdateStudent = (opts?: UseMutationOptions<StudentRow, ApiError,
 
 export const useDeactivateStudent = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
   useInvalidating(api.admin.deactivateStudent, qk.admin.students, opts);
+
+export const useCreateTeacher = (opts?: UseMutationOptions<TeacherRow, ApiError, Partial<TeacherRow> & { password?: string }>) =>
+  useInvalidating(api.admin.createTeacher, qk.admin.teachers, opts);
+
+export const useUpdateTeacher = (opts?: UseMutationOptions<TeacherRow, ApiError, { id: number; patch: Partial<TeacherRow> }>) =>
+  useInvalidating(
+    ({ id, patch }) => api.admin.updateTeacher(id, patch),
+    qk.admin.teachers,
+    opts,
+  );
+
+export const useDeactivateTeacher = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
+  useInvalidating(api.admin.deactivateTeacher, qk.admin.teachers, opts);
 
 export const useResolveAlert = (opts?: UseMutationOptions<unknown, ApiError, { id: number; status: "RESOLVED" | "DISMISSED"; note?: string }>) =>
   useInvalidating(

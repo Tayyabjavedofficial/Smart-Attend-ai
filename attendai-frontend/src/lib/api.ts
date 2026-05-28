@@ -290,6 +290,18 @@ export const api = {
       ? delay(mock.TEACHERS)
       : requestList<mock.TeacherRow>("/admin/teachers"),
 
+    createTeacher: (body: Partial<mock.TeacherRow> & { password?: string }) => MOCK
+      ? delay({ ...body, id: Math.floor(Math.random() * 10000), status: "ACTIVE" } as mock.TeacherRow)
+      : request<mock.TeacherRow>("/admin/teachers", { method: "POST", body: JSON.stringify(body) }),
+
+    updateTeacher: (id: number, body: Partial<mock.TeacherRow>) => MOCK
+      ? delay({ ...body, id } as mock.TeacherRow)
+      : request<mock.TeacherRow>(`/admin/teachers/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+
+    deactivateTeacher: (id: number) => MOCK
+      ? delay({ id, status: "INACTIVE" } as Partial<mock.TeacherRow>)
+      : request<void>(`/admin/teachers/${id}`, { method: "DELETE" }),
+
     listCourses: () => MOCK
       ? delay(mock.COURSES)
       : requestList<mock.CourseRow>("/admin/courses"),
