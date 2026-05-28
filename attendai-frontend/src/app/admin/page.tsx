@@ -194,10 +194,10 @@ export default function AdminDashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <Badge tone={tone}>{a.severity}</Badge>
-                      <span className="text-[0.7rem] text-ink-400 truncate">{a.courseCode}</span>
+                      <span className="text-[0.7rem] text-ink-400 truncate numeral">Risk {a.riskScore}</span>
                     </div>
                     <p className="text-[0.82rem] text-ink-900 mt-0.5">{a.alertType}</p>
-                    <p className="text-[0.7rem] text-ink-400 truncate">{a.studentName} · {a.studentRegNo}</p>
+                    <p className="text-[0.7rem] text-ink-400 truncate">Student #{a.studentId}</p>
                   </div>
                 </li>
               );
