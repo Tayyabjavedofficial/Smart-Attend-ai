@@ -89,7 +89,7 @@ export default function TeacherDashboardPage() {
           label="Active Session"
           value={activeSession?.courseCode ?? "—"}
           caption={activeSession
-            ? `Section ${activeSession.section} · ${livePresent}/${liveTotal}`
+            ? `Section ${activeSession.sectionName} · ${livePresent}/${liveTotal}`
             : "No active session"}
           icon={Radio}
           accent="blue"
