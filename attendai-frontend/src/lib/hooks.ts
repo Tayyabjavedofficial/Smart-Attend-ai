@@ -181,6 +181,13 @@ export const useResolveAlert = (opts?: UseMutationOptions<unknown, ApiError, { i
     opts,
   );
 
+export const useUpdateDevice = (opts?: UseMutationOptions<unknown, ApiError, { id: number; action: "APPROVE" | "BLOCK" | "REMOVE" }>) =>
+  useInvalidating(
+    ({ id, action }) => api.admin.updateDevice(id, action),
+    qk.admin.devices,
+    opts,
+  );
+
 // ============================================================
 // Teacher
 // ============================================================

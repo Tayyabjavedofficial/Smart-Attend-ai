@@ -60,6 +60,34 @@ export interface ProfilePatch {
   avatar?: string;
 }
 
+/** A trusted device, mirroring the backend DeviceDto. */
+export interface DeviceDto {
+  id: number;
+  studentId: number;
+  studentName: string;
+  deviceName: string;
+  browserInfo: string;
+  ipAddress: string;
+  trusted: boolean;
+  blocked: boolean;
+  lastUsedAt?: string | null;
+  createdAt?: string | null;
+}
+
+/** A proxy alert, mirroring the backend AlertDto. */
+export interface ProxyAlertDto {
+  id: number;
+  studentId: number;
+  sessionId?: number | null;
+  challengeId?: number | null;
+  alertType: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  description: string;
+  riskScore: number;
+  status: "OPEN" | "RESOLVED" | "DISMISSED" | string;
+  createdAt: string;
+}
+
 /** A teacher↔course↔section assignment, mirroring the backend AssignmentDto. */
 export interface AssignmentDto {
   id: number;
@@ -398,19 +426,23 @@ export const api = {
       : request<void>(`/admin/teacher-assignments/${id}`, { method: "DELETE" }),
 
     listAlerts: () => MOCK
-      ? delay(mock.ALERTS)
-      : requestList<mock.AlertRow>("/admin/proxy-alerts"),
+      ? delay(mock.ALERTS as unknown as ProxyAlertDto[])
+      : requestList<ProxyAlertDto>("/admin/proxy-alerts"),
 
     resolveAlert: (id: number, status: "RESOLVED" | "DISMISSED", note?: string) => MOCK
       ? delay({ id, status })
-      : request(`/admin/proxy-alerts/${id}`, {
-          method: "PATCH",
+      : request<ProxyAlertDto>(`/admin/proxy-alerts/${id}`, {
+          method: "PUT",
           body: JSON.stringify({ status, resolutionNote: note }),
         }),
 
     listDevices: () => MOCK
-      ? delay(mock.DEVICES)
-      : requestList<mock.DeviceRow>("/admin/devices"),
+      ? delay(mock.DEVICES as unknown as DeviceDto[])
+      : requestList<DeviceDto>("/admin/devices"),
+
+    updateDevice: (id: number, action: "APPROVE" | "BLOCK" | "REMOVE") => MOCK
+      ? delay({ id } as unknown as DeviceDto)
+      : request<DeviceDto>(`/admin/devices/${id}`, { method: "PUT", body: JSON.stringify({ action }) }),
   },
 
   // ----- TEACHER -----
