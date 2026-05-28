@@ -46,6 +46,35 @@ export function useAdminDashboard() {
   });
 }
 
+// ============================================================
+// Current user (self-service account)
+// ============================================================
+
+export const qkMe = ["me"] as const;
+
+export function useProfile() {
+  return useQuery({ queryKey: qkMe, queryFn: api.me.profile });
+}
+
+export function useUpdateProfile(opts?: UseMutationOptions<Awaited<ReturnType<typeof api.me.updateProfile>>, ApiError, string>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fullName: string) => api.me.updateProfile(fullName),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: qkMe });
+      opts?.onSuccess?.(...args);
+    },
+    ...opts,
+  });
+}
+
+export function useChangePassword(opts?: UseMutationOptions<void, ApiError, { currentPassword: string; newPassword: string }>) {
+  return useMutation({
+    mutationFn: ({ currentPassword, newPassword }) => api.me.changePassword(currentPassword, newPassword),
+    ...opts,
+  });
+}
+
 export function useStudents() {
   return useQuery({
     queryKey: qk.admin.students,

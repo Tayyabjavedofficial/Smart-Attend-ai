@@ -36,6 +36,15 @@ export class ApiError extends Error {
   }
 }
 
+/** The current user's own profile, mirroring the backend MeDto. */
+export interface MeProfile {
+  id: number;
+  fullName: string;
+  email: string;
+  role: "ADMIN" | "TEACHER" | "STUDENT";
+  status: string;
+}
+
 /** A teacher↔course↔section assignment, mirroring the backend AssignmentDto. */
 export interface AssignmentDto {
   id: number;
@@ -270,6 +279,24 @@ export const api = {
         body: JSON.stringify({ token, newPassword }),
       });
     },
+  },
+
+  // ----- CURRENT USER (self-service) -----
+  me: {
+    profile: () => MOCK
+      ? delay({ id: 1, fullName: "Demo User", email: "demo@attendai.local", role: "ADMIN", status: "ACTIVE" } as MeProfile)
+      : request<MeProfile>("/me"),
+
+    updateProfile: (fullName: string) => MOCK
+      ? delay({ id: 1, fullName, email: "demo@attendai.local", role: "ADMIN", status: "ACTIVE" } as MeProfile)
+      : request<MeProfile>("/me", { method: "PUT", body: JSON.stringify({ fullName }) }),
+
+    changePassword: (currentPassword: string, newPassword: string) => MOCK
+      ? delay(undefined)
+      : request<void>("/me/change-password", {
+          method: "POST",
+          body: JSON.stringify({ currentPassword, newPassword }),
+        }),
   },
 
   // ----- ADMIN -----

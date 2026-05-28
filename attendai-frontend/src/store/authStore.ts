@@ -9,6 +9,7 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   setSession: (data: { user: User; accessToken: string; refreshToken: string }) => void;
+  updateUser: (patch: Partial<User>) => void;
   clear: () => void;
 }
 
@@ -24,6 +25,7 @@ export const useAuthStore = create<AuthState>()(
         }
         set({ user, accessToken, refreshToken });
       },
+      updateUser: (patch) => set((s) => ({ user: s.user ? { ...s.user, ...patch } : s.user })),
       clear: () => {
         if (typeof window !== "undefined") {
           localStorage.removeItem("attendai.accessToken");
