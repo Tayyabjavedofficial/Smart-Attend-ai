@@ -1,172 +1,261 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
-  Radio, Plus, BookOpen, Eye, Square, ArrowRight, Calendar,
-  Clock as ClockIcon, Users,
+  Radio, Plus, Play, Square, RefreshCw, Loader2, AlertCircle, Clock,
+  Users, Hash,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
-import { Tabs } from "@/components/ui/Tabs";
-import { SESSIONS, type SessionRow } from "@/lib/mockData";
+import { useTeacherSessions, useTeacherCourses, useSessionLive, qk } from "@/lib/hooks";
+import { api, ApiError, type TeacherSession, type ChallengeInfo, type TeacherCourseOption } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit",
-  });
-}
-
-const statusTone: Record<SessionRow["status"], "live" | "success" | "neutral" | "danger"> = {
-  ACTIVE: "live",
-  SCHEDULED: "neutral",
-  CLOSED: "success",
-  EXPIRED: "danger",
-};
+const fieldCls = "block w-full h-11 px-3.5 rounded-xl bg-white/70 border border-ink-200/60 text-sm text-ink-900 outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500";
 
 export default function TeacherSessionsPage() {
-  const [sessions] = useState(SESSIONS);
-  const [tab, setTab] = useState("active");
+  const qc = useQueryClient();
+  const { data: sessions = [], isLoading, error, refetch } = useTeacherSessions();
+  const { data: assignments = [] } = useTeacherCourses();
 
-  const counts = useMemo(() => ({
-    active: sessions.filter(s => s.status === "ACTIVE").length,
-    scheduled: sessions.filter(s => s.status === "SCHEDULED").length,
-    closed: sessions.filter(s => s.status === "CLOSED").length,
-    expired: sessions.filter(s => s.status === "EXPIRED").length,
-  }), [sessions]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [assignmentKey, setAssignmentKey] = useState("");
+  const [title, setTitle] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    if (tab === "all") return sessions;
-    return sessions.filter(s => s.status.toLowerCase() === tab);
-  }, [sessions, tab]);
+  // Latest issued challenge per session (so the teacher can display the code).
+  const [codes, setCodes] = useState<Record<number, ChallengeInfo>>({});
+
+  const refresh = () => qc.invalidateQueries({ queryKey: qk.teacher.sessions });
+
+  const createSession = async () => {
+    const opt = (assignments as TeacherCourseOption[]).find(a => `${a.courseId}:${a.sectionId}` === assignmentKey);
+    if (!opt) { setErr("Pick a course & section."); return; }
+    setErr(null); setBusy(true);
+    try {
+      await api.teacher.createSession({ courseId: opt.courseId, sectionId: opt.sectionId, sessionTitle: title.trim() || undefined });
+      setCreateOpen(false); setTitle(""); setAssignmentKey("");
+      refresh();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Could not create session.");
+    } finally { setBusy(false); }
+  };
+
+  const start = async (s: TeacherSession) => {
+    setBusy(true);
+    try {
+      const res = await api.teacher.startSession(s.id, { durationSeconds: 60, challengeType: "CODE_QR" });
+      setCodes(c => ({ ...c, [s.id]: res.challenge }));
+      refresh();
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "Could not start session.");
+    } finally { setBusy(false); }
+  };
+
+  const newCode = async (s: TeacherSession) => {
+    setBusy(true);
+    try {
+      const ch = await api.teacher.nextChallenge(s.id, { durationSeconds: 60, challengeType: "CODE_QR" });
+      setCodes(c => ({ ...c, [s.id]: ch }));
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "Could not generate a new code.");
+    } finally { setBusy(false); }
+  };
+
+  const close = async (s: TeacherSession) => {
+    setBusy(true);
+    try {
+      await api.teacher.closeSession(s.id);
+      setCodes(c => { const n = { ...c }; delete n[s.id]; return n; });
+      refresh();
+    } catch (e) {
+      alert(e instanceof ApiError ? e.message : "Could not close session.");
+    } finally { setBusy(false); }
+  };
 
   return (
     <>
       <PageHeader
         title="Attendance Sessions"
-        subtitle="Live sessions, upcoming classes, and past attendance."
+        subtitle="Start a session, share the live code, and watch attendance come in."
         icon={Radio}
         crumbs={[{ label: "Teacher", href: "/teacher" }, { label: "Sessions" }]}
-        action={<Button><Plus className="size-4" /> Start New Session</Button>}
+        action={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => refetch()}><RefreshCw className="size-4" /> Refresh</Button>
+            <Button onClick={() => { setErr(null); setCreateOpen(true); }} disabled={assignments.length === 0}>
+              <Plus className="size-4" /> New Session
+            </Button>
+          </div>
+        }
       />
 
-      <div className="mb-4">
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          items={[
-            { value: "active", label: "Live", count: counts.active },
-            { value: "scheduled", label: "Scheduled", count: counts.scheduled },
-            { value: "closed", label: "Closed", count: counts.closed },
-            { value: "expired", label: "Expired", count: counts.expired },
-            { value: "all", label: "All", count: sessions.length },
-          ]}
-        />
-      </div>
+      {assignments.length === 0 ? (
+        <div className="rounded-2xl p-4 mb-4 text-sm text-amber-900 bg-amber-50/60 ring-1 ring-amber-200/60">
+          <AlertCircle className="inline size-4 mr-1" />
+          You aren&apos;t assigned to any course yet. Ask an admin to assign you (Admin → Assignments) before creating a session.
+        </div>
+      ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.length === 0 ? (
-          <div className="col-span-full glass rounded-2xl p-12 text-center">
-            <Radio className="size-8 text-ink-300 mx-auto mb-2" />
-            <p className="font-display text-xl text-ink-700">No sessions in this view</p>
-            <p className="text-sm text-ink-400 mt-1">Switch tabs to see other sessions.</p>
+      {error ? (
+        <ErrorBox error={error as Error} onRetry={() => refetch()} />
+      ) : isLoading ? (
+        <LoadingBox />
+      ) : sessions.length === 0 ? (
+        <div className="glass rounded-2xl p-12 text-center">
+          <Radio className="size-8 text-ink-300 mx-auto mb-2" />
+          <p className="font-display text-xl text-ink-700">No sessions yet</p>
+          <p className="text-sm text-ink-400 mt-1">Click &quot;New Session&quot; to create one for a course you teach.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 max-w-3xl">
+          {sessions.map((s) => (
+            <SessionCard
+              key={s.id} session={s} code={codes[s.id]} busy={busy}
+              onStart={() => start(s)} onNewCode={() => newCode(s)} onClose={() => close(s)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Create */}
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="New Attendance Session"
+        description="Pick a course & section you teach. You'll start it and get a code next."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={busy}>Cancel</Button>
+            <Button onClick={createSession} disabled={busy || !assignmentKey}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : null} Create
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-ink-500 uppercase tracking-wide">Course &amp; Section</label>
+            <select className={fieldCls} value={assignmentKey} onChange={(e) => setAssignmentKey(e.target.value)}>
+              <option value="" disabled>Select…</option>
+              {(assignments as TeacherCourseOption[]).map((a) => (
+                <option key={a.assignmentId} value={`${a.courseId}:${a.sectionId}`}>
+                  {a.courseCode} — {a.courseName} · {a.sectionName}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : filtered.map(s => {
-          const pct = s.total > 0 ? (s.present / s.total) * 100 : 0;
-          const isLive = s.status === "ACTIVE";
-
-          return (
-            <Card key={s.id} className="relative">
-              {isLive ? (
-                <div className="absolute -top-1 -right-1">
-                  <Badge tone="live" dot>Live</Badge>
-                </div>
-              ) : null}
-
-              <div className="flex items-start gap-3 mb-4">
-                <div className={cn(
-                  "size-11 rounded-xl grid place-items-center shrink-0",
-                  isLive ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700"
-                )}>
-                  <BookOpen className="size-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[0.7rem] uppercase tracking-wider text-ink-400 numeral">{s.sessionCode}</p>
-                  <h3 className="font-display text-[1.25rem] leading-tight text-ink-900 mt-0.5 truncate">
-                    <span className="numeral">{s.courseCode}</span> — {s.courseName}
-                  </h3>
-                  <p className="text-xs text-ink-500 mt-0.5">Section {s.section}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs text-ink-500 mb-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="size-3 text-ink-400" />
-                  <span>{formatDate(s.startTime)}</span>
-                </div>
-                {s.endTime ? (
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="size-3 text-ink-400" />
-                    <span>Ended {formatDate(s.endTime)}</span>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Attendance progress (if applicable) */}
-              {s.status !== "SCHEDULED" ? (
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-ink-600">
-                      <Users className="size-3 text-ink-400" />
-                      <span className="numeral">{s.present}</span> of <span className="numeral">{s.total}</span>
-                    </span>
-                    <span className={cn(
-                      "numeral text-sm font-medium",
-                      pct >= 85 ? "text-brand-700" : pct >= 70 ? "text-accent-amber" : "text-accent-rose"
-                    )}>
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-ink-100 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        isLive ? "bg-gradient-to-r from-brand-500 to-brand-600 animate-pulse-soft" : "bg-brand-500"
-                      )}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="mb-4 p-2.5 rounded-lg bg-amber-50/60 text-[0.72rem] text-amber-800">
-                  Scheduled — students cannot mark attendance yet.
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-3 border-t border-ink-100/80">
-                <Badge tone={statusTone[s.status]} dot={isLive}>
-                  {s.status[0] + s.status.slice(1).toLowerCase()}
-                </Badge>
-                <div className="flex items-center gap-1">
-                  {isLive ? (
-                    <button className="inline-flex items-center gap-1 px-2.5 h-7 text-xs rounded-lg bg-ink-100 hover:bg-ink-200 text-ink-700 transition-colors">
-                      <Square className="size-3" />
-                      Close
-                    </button>
-                  ) : null}
-                  <button className="inline-flex items-center gap-1 px-2.5 h-7 text-xs rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 transition-colors">
-                    {isLive ? "Monitor" : "View"}
-                    <ArrowRight className="size-3" />
-                  </button>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-ink-500 uppercase tracking-wide">Title (optional)</label>
+            <input className={fieldCls} placeholder="e.g. Week 7 Lecture" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          {err ? <Badge tone="danger">{err}</Badge> : null}
+        </div>
+      </Modal>
     </>
+  );
+}
+
+function SessionCard({ session, code, busy, onStart, onNewCode, onClose }: {
+  session: TeacherSession; code?: ChallengeInfo; busy: boolean;
+  onStart: () => void; onNewCode: () => void; onClose: () => void;
+}) {
+  const isActive = session.status === "ACTIVE";
+  const isScheduled = session.status === "SCHEDULED";
+  const { data: live, refetch: refetchLive } = useSessionLive(isActive ? session.id : null);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!code) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [code]);
+  const secsLeft = useMemo(() => code ? Math.max(0, Math.round((new Date(code.expiryTime).getTime() - now) / 1000)) : 0, [code, now]);
+
+  return (
+    <Card>
+      <div className="flex items-start gap-3">
+        <div className={cn("size-11 rounded-xl grid place-items-center shrink-0",
+          isActive ? "bg-brand-600 text-white" : isScheduled ? "bg-amber-50 text-amber-700" : "bg-ink-100 text-ink-500")}>
+          <Radio className="size-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Badge tone={isActive ? "live" : isScheduled ? "warning" : "neutral"} dot>{session.status}</Badge>
+            <span className="text-[0.7rem] text-ink-400 numeral">{session.sessionCode}</span>
+          </div>
+          <p className="text-[0.95rem] text-ink-900 mt-0.5">
+            <span className="numeral font-medium">{session.courseCode}</span> — {session.courseName}
+          </p>
+          <p className="text-xs text-ink-400">{session.sectionName}{session.sessionTitle ? ` · ${session.sessionTitle}` : ""}</p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {isScheduled ? <Button onClick={onStart} disabled={busy}><Play className="size-4" /> Start</Button> : null}
+          {isActive ? (
+            <>
+              <Button variant="secondary" onClick={onNewCode} disabled={busy}><Hash className="size-4" /> New code</Button>
+              <Button variant="danger" onClick={onClose} disabled={busy}><Square className="size-4" /> Close</Button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {isActive && code ? (
+        <div className="mt-4 rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 text-white p-5 text-center">
+          <p className="text-[0.65rem] uppercase tracking-[0.2em] text-white/50">Live code — share with students</p>
+          <p className="font-display text-[2.6rem] tracking-[0.3em] leading-none mt-2 numeral">{code.challengeCode}</p>
+          <div className="inline-flex items-center gap-1.5 mt-2 text-sm">
+            <Clock className="size-3.5" />
+            <span className={cn("numeral", secsLeft <= 10 ? "text-rose-200" : "text-white/80")}>
+              {Math.floor(secsLeft / 60)}:{(secsLeft % 60).toString().padStart(2, "0")}
+            </span>
+            {secsLeft === 0 ? <span className="text-rose-200">· expired — click “New code”</span> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {isActive && !code ? (
+        <p className="mt-3 text-xs text-ink-400">Session is active. Click <strong>New code</strong> to issue a challenge for students to enter.</p>
+      ) : null}
+
+      {isActive ? (
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-ink-500"><Users className="size-3.5" /> Live</div>
+          <div className="flex gap-2 flex-wrap">
+            <Stat label="Present" value={live?.present ?? 0} tone="success" />
+            <Stat label="Pending" value={live?.pendingReview ?? 0} tone="warning" />
+            <Stat label="Suspicious" value={live?.suspicious ?? 0} tone="danger" />
+            <Stat label="Total" value={live?.total ?? 0} tone="neutral" />
+          </div>
+          <button onClick={() => refetchLive()} className="ml-auto text-ink-400 hover:text-brand-700" aria-label="Refresh counts">
+            <RefreshCw className="size-3.5" />
+          </button>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: "success" | "warning" | "danger" | "neutral" }) {
+  const c = tone === "success" ? "text-brand-700 bg-brand-50" : tone === "warning" ? "text-amber-700 bg-amber-50" : tone === "danger" ? "text-rose-700 bg-rose-50" : "text-ink-600 bg-ink-100";
+  return <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs", c)}><b className="numeral">{value}</b> {label}</span>;
+}
+
+function LoadingBox() {
+  return <div className="glass rounded-2xl p-12 text-center"><Loader2 className="size-6 text-brand-600 animate-spin mx-auto mb-2" /><p className="text-sm text-ink-500">Loading…</p></div>;
+}
+function ErrorBox({ error, onRetry }: { error: Error; onRetry: () => void }) {
+  return (
+    <div className="glass rounded-2xl p-12 text-center">
+      <AlertCircle className="size-7 text-accent-rose mx-auto mb-2" />
+      <p className="font-display text-xl text-ink-900">Couldn&apos;t load sessions</p>
+      <p className="text-sm text-ink-500 mt-1 mb-4">{error.message}</p>
+      <Button variant="secondary" onClick={onRetry}>Try again</Button>
+    </div>
   );
 }

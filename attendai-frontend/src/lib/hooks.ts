@@ -193,7 +193,7 @@ export const useUpdateDevice = (opts?: UseMutationOptions<unknown, ApiError, { i
 // ============================================================
 
 export function useTeacherCourses() {
-  return useQuery({ queryKey: qk.teacher.courses, queryFn: api.teacher.listCourses });
+  return useQuery({ queryKey: qk.teacher.courses, queryFn: api.teacher.myAssignments });
 }
 
 export function useTeacherSessions() {

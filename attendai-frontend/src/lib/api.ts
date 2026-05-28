@@ -60,6 +60,45 @@ export interface ProfilePatch {
   avatar?: string;
 }
 
+/** A course+section pair the teacher is assigned to teach (from /teacher/courses). */
+export interface TeacherCourseOption {
+  assignmentId: number;
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  sectionId: number;
+  sectionName: string;
+}
+
+/** A teacher's attendance session (backend SessionDto). */
+export interface TeacherSession {
+  id: number;
+  sessionCode: string;
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  sectionId: number;
+  sectionName: string;
+  sessionTitle?: string | null;
+  status: string;
+  startTime?: string | null;
+  endTime?: string | null;
+}
+
+/** A challenge as the teacher sees it — includes the visible code to display. */
+export interface ChallengeInfo {
+  challengeId: number;
+  sessionId: number;
+  challengeCode: string;
+  qrToken?: string;
+  challengeType: string;
+  startTime?: string;
+  expiryTime: string;
+  durationSeconds: number;
+}
+
+export interface StartResult { session: TeacherSession; challenge: ChallengeInfo; }
+
 /** An active attendance session a student is enrolled in (backend SessionDto). */
 export interface StudentSession {
   id: number;
@@ -478,37 +517,47 @@ export const api = {
     updateDevice: (id: number, action: "APPROVE" | "BLOCK" | "REMOVE") => MOCK
       ? delay({ id } as unknown as DeviceDto)
       : request<DeviceDto>(`/admin/devices/${id}`, { method: "PUT", body: JSON.stringify({ action }) }),
+
+    // ----- Student enrollment in a course/section -----
+    enroll: (body: { courseId: number; sectionId: number; studentIds: number[] }) => MOCK
+      ? delay({ enrolled: body.studentIds.length, skipped: 0 })
+      : request<{ enrolled: number; skipped: number }>("/admin/enrollments", { method: "POST", body: JSON.stringify(body) }),
+
+    enrolledStudentIds: (courseId: number, sectionId: number) => MOCK
+      ? delay([] as number[])
+      : request<number[]>(`/admin/enrollments?courseId=${courseId}&sectionId=${sectionId}`),
   },
 
   // ----- TEACHER -----
   teacher: {
-    listCourses: () => MOCK
-      ? delay(mock.COURSES.slice(0, 4))
-      : requestList<mock.CourseRow>("/teacher/courses"),
+    // The teacher's assigned course+section pairs (each can host a session).
+    myAssignments: () => MOCK
+      ? delay([] as TeacherCourseOption[])
+      : requestList<TeacherCourseOption>("/teacher/courses"),
 
     listSessions: () => MOCK
-      ? delay(mock.SESSIONS)
-      : requestList<mock.SessionRow>("/teacher/attendance-sessions"),
+      ? delay(mock.SESSIONS as unknown as TeacherSession[])
+      : requestList<TeacherSession>("/teacher/attendance-sessions"),
 
     sessionLive: (sessionId: number): Promise<LiveCounters> => MOCK
       ? delay({ present: 38, absent: 7, late: 2, suspicious: 0, pendingReview: 0, total: 45 })
       : request<LiveCounters>(`/teacher/attendance-sessions/${sessionId}/live`),
 
     createSession: (body: { courseId: number; sectionId: number; sessionTitle?: string }) => MOCK
-      ? delay({ id: 999, sessionCode: "AS-NEW", status: "SCHEDULED" })
-      : request("/teacher/attendance-sessions", { method: "POST", body: JSON.stringify(body) }),
+      ? delay({ id: 999, sessionCode: "AS-NEW", status: "SCHEDULED" } as TeacherSession)
+      : request<TeacherSession>("/teacher/attendance-sessions", { method: "POST", body: JSON.stringify(body) }),
 
     startSession: (id: number, body: { durationSeconds?: number; challengeType?: string }) => MOCK
-      ? delay({ session: { id, status: "ACTIVE" }, challenge: { challengeId: 1, challengeCode: "G7Q4M2", expiryTime: new Date(Date.now() + 60000).toISOString() } })
-      : request(`/teacher/attendance-sessions/${id}/start`, { method: "POST", body: JSON.stringify(body) }),
+      ? delay({ session: { id, status: "ACTIVE" } as TeacherSession, challenge: { challengeId: 1, sessionId: id, challengeCode: "G7Q4M2", challengeType: "CODE_QR", expiryTime: new Date(Date.now() + 60000).toISOString(), durationSeconds: 60 } } as StartResult)
+      : request<StartResult>(`/teacher/attendance-sessions/${id}/start`, { method: "POST", body: JSON.stringify(body) }),
 
     nextChallenge: (id: number, body: { durationSeconds?: number; challengeType?: string }) => MOCK
-      ? delay({ challengeId: Math.floor(Math.random() * 1000), challengeCode: "ABC123", expiryTime: new Date(Date.now() + 60000).toISOString() })
-      : request(`/teacher/attendance-sessions/${id}/challenges`, { method: "POST", body: JSON.stringify(body) }),
+      ? delay({ challengeId: Math.floor(Math.random() * 1000), sessionId: id, challengeCode: "ABC123", challengeType: "CODE_QR", expiryTime: new Date(Date.now() + 60000).toISOString(), durationSeconds: 60 } as ChallengeInfo)
+      : request<ChallengeInfo>(`/teacher/attendance-sessions/${id}/challenges`, { method: "POST", body: JSON.stringify(body) }),
 
     closeSession: (id: number) => MOCK
-      ? delay({ id, status: "CLOSED" })
-      : request(`/teacher/attendance-sessions/${id}/close`, { method: "POST" }),
+      ? delay({ id, status: "CLOSED" } as TeacherSession)
+      : request<TeacherSession>(`/teacher/attendance-sessions/${id}/close`, { method: "POST" }),
   },
 
   // ----- STUDENT -----
