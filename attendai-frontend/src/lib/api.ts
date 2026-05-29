@@ -629,7 +629,9 @@ export const api = {
 
     createSession: (body: { courseId: number; sectionId: number; sessionTitle?: string }) => MOCK
       ? delay({ id: 999, sessionCode: "AS-NEW", status: "SCHEDULED" } as TeacherSession)
-      : request<TeacherSession>("/teacher/attendance-sessions", { method: "POST", body: JSON.stringify(body) }),
+      // CODE_FACE = student types the code + face verification (no QR scanner
+      // in the UI, no trusted-device requirement). Matches how students mark.
+      : request<TeacherSession>("/teacher/attendance-sessions", { method: "POST", body: JSON.stringify({ ...body, verificationMode: "CODE_FACE" }) }),
 
     startSession: (id: number, body: { durationSeconds?: number; challengeType?: string }) => MOCK
       ? delay({ session: { id, status: "ACTIVE" } as TeacherSession, challenge: { challengeId: 1, sessionId: id, challengeCode: "G7Q4M2", challengeType: "CODE_QR", expiryTime: new Date(Date.now() + 60000).toISOString(), durationSeconds: 60 } } as StartResult)
