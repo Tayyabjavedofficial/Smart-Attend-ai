@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar, type NavItem } from "./Sidebar";
+import { AssistantWidget } from "@/components/assistant/AssistantWidget";
 import { useAuthStore } from "@/store/authStore";
 import { type Role } from "@/types/api";
 
@@ -41,6 +42,7 @@ export function DashboardLayout({ navItems, roleLabel, roleSubtitle, requireRole
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:py-6 lg:pr-6 lg:pl-4 relative z-10 animate-fade-up">
         {children}
       </main>
+      <AssistantWidget role={requireRole} />
     </div>
   );
 }

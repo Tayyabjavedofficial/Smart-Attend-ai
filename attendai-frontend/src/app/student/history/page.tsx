@@ -4,16 +4,31 @@ import { useMemo, useState } from "react";
 import {
   ClipboardList, CheckCircle2, XCircle, Clock, AlertTriangle,
   ShieldAlert, FileText, Filter, Download, FileSpreadsheet, FileBarChart,
+  AlertCircle, Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Card } from "@/components/ui/Card";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Tabs } from "@/components/ui/Tabs";
 import { useAuthStore } from "@/store/authStore";
-import { STUDENT_HISTORY, type HistoryRow } from "@/lib/mockData";
+import { useHistory } from "@/lib/hooks";
+import type { AttendanceStatus } from "@/types/api";
 
-const statusMeta: Record<HistoryRow["status"], { tone: "success" | "danger" | "warning" | "neutral"; Icon: typeof CheckCircle2; label: string }> = {
+/** Normalised history row — tolerates both the real backend shape
+ *  (markedAt) and the mock shape (date/courseName/remarks). */
+interface HistRow {
+  recordId: number;
+  ts: string;
+  courseCode: string;
+  courseName?: string;
+  status: AttendanceStatus;
+  riskScore: number | null;
+  remarks?: string;
+}
+
+const statusMeta: Record<AttendanceStatus, { tone: "success" | "danger" | "warning" | "neutral"; Icon: typeof CheckCircle2; label: string }> = {
   PRESENT:         { tone: "success", Icon: CheckCircle2, label: "Present" },
   MANUAL_PRESENT:  { tone: "success", Icon: CheckCircle2, label: "Manual present" },
   EXCUSED:         { tone: "neutral", Icon: FileText, label: "Excused" },
@@ -25,13 +40,27 @@ const statusMeta: Record<HistoryRow["status"], { tone: "success" | "danger" | "w
 };
 
 export default function StudentHistoryPage() {
+  const { data, isLoading, error } = useHistory();
   const [tab, setTab] = useState("all");
   const [course, setCourse] = useState("all");
 
-  const courses = useMemo(() => Array.from(new Set(STUDENT_HISTORY.map(r => r.courseCode))).sort(), []);
+  const rows = useMemo<HistRow[]>(() => {
+    const content = (data as { content?: unknown[] } | undefined)?.content ?? [];
+    return (content as Record<string, unknown>[]).map((r) => ({
+      recordId: Number(r.recordId),
+      ts: String(r.markedAt ?? r.date ?? ""),
+      courseCode: String(r.courseCode ?? ""),
+      courseName: r.courseName ? String(r.courseName) : undefined,
+      status: (r.status as AttendanceStatus) ?? "PENDING_REVIEW",
+      riskScore: r.riskScore == null ? null : Number(r.riskScore),
+      remarks: r.remarks ? String(r.remarks) : undefined,
+    }));
+  }, [data]);
+
+  const courses = useMemo(() => Array.from(new Set(rows.map(r => r.courseCode).filter(Boolean))).sort(), [rows]);
 
   const filtered = useMemo(() => {
-    return STUDENT_HISTORY.filter(r => {
+    return rows.filter(r => {
       if (course !== "all" && r.courseCode !== course) return false;
       if (tab === "all") return true;
       if (tab === "present") return r.status === "PRESENT" || r.status === "MANUAL_PRESENT";
@@ -40,10 +69,10 @@ export default function StudentHistoryPage() {
       if (tab === "issues") return r.status === "SUSPICIOUS" || r.status === "PENDING_REVIEW";
       return true;
     });
-  }, [tab, course]);
+  }, [rows, tab, course]);
 
   const counts = useMemo(() => {
-    const base = course === "all" ? STUDENT_HISTORY : STUDENT_HISTORY.filter(r => r.courseCode === course);
+    const base = course === "all" ? rows : rows.filter(r => r.courseCode === course);
     return {
       all: base.length,
       present: base.filter(r => r.status === "PRESENT" || r.status === "MANUAL_PRESENT").length,
@@ -51,21 +80,21 @@ export default function StudentHistoryPage() {
       absent: base.filter(r => r.status === "ABSENT" || r.status === "REJECTED").length,
       issues: base.filter(r => r.status === "SUSPICIOUS" || r.status === "PENDING_REVIEW").length,
     };
-  }, [course]);
+  }, [rows, course]);
 
-  const columns: Column<HistoryRow>[] = [
+  const columns: Column<HistRow>[] = [
     {
       key: "date",
       header: "Date",
       sortable: true,
-      sortValue: (r) => new Date(r.date).getTime(),
+      sortValue: (r) => new Date(r.ts).getTime() || 0,
       render: (r) => (
         <div className="leading-tight">
           <p className="text-[0.82rem] text-ink-900">
-            {new Date(r.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            {r.ts ? new Date(r.ts).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
           </p>
           <p className="text-[0.65rem] text-ink-400 numeral">
-            {new Date(r.date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+            {r.ts ? new Date(r.ts).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : ""}
           </p>
         </div>
       ),
@@ -77,10 +106,8 @@ export default function StudentHistoryPage() {
       sortValue: (r) => r.courseCode,
       render: (r) => (
         <div className="leading-tight">
-          <p className="text-[0.82rem] text-ink-900">
-            <span className="numeral font-medium">{r.courseCode}</span>
-          </p>
-          <p className="text-[0.65rem] text-ink-400 truncate max-w-[200px]">{r.courseName}</p>
+          <p className="text-[0.82rem] text-ink-900"><span className="numeral font-medium">{r.courseCode || "—"}</span></p>
+          {r.courseName ? <p className="text-[0.65rem] text-ink-400 truncate max-w-[200px]">{r.courseName}</p> : null}
         </div>
       ),
     },
@@ -88,12 +115,8 @@ export default function StudentHistoryPage() {
       key: "status",
       header: "Status",
       render: (r) => {
-        const m = statusMeta[r.status];
-        return (
-          <Badge tone={m.tone} dot>
-            {m.label}
-          </Badge>
-        );
+        const m = statusMeta[r.status] ?? statusMeta.PENDING_REVIEW;
+        return <Badge tone={m.tone} dot>{m.label}</Badge>;
       },
     },
     {
@@ -127,48 +150,62 @@ export default function StudentHistoryPage() {
         action={<ExportMenu />}
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          items={[
-            { value: "all", label: "All", count: counts.all },
-            { value: "present", label: "Present", count: counts.present },
-            { value: "late", label: "Late", count: counts.late },
-            { value: "absent", label: "Absent", count: counts.absent },
-            { value: "issues", label: "Flagged", count: counts.issues },
-          ]}
-        />
-        <div className="ml-auto flex items-center gap-2">
-          <Filter className="size-3.5 text-ink-400" />
-          <select
-            value={course}
-            onChange={(e) => setCourse(e.target.value)}
-            className="h-9 px-3 rounded-lg bg-white/70 border border-ink-200/60 text-xs outline-none focus:border-brand-500 cursor-pointer"
-          >
-            <option value="all">All courses</option>
-            {courses.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </div>
+      {error ? (
+        <Card className="text-center py-12">
+          <AlertCircle className="size-7 text-accent-rose mx-auto mb-2" />
+          <p className="font-display text-xl text-ink-900">Couldn&apos;t load your history</p>
+          <p className="text-sm text-ink-500 mt-1">{(error as Error).message}</p>
+        </Card>
+      ) : isLoading ? (
+        <Card className="flex items-center justify-center py-16 text-ink-400">
+          <Loader2 className="size-5 animate-spin mr-2" /> Loading your records…
+        </Card>
+      ) : (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Tabs
+              value={tab}
+              onChange={setTab}
+              items={[
+                { value: "all", label: "All", count: counts.all },
+                { value: "present", label: "Present", count: counts.present },
+                { value: "late", label: "Late", count: counts.late },
+                { value: "absent", label: "Absent", count: counts.absent },
+                { value: "issues", label: "Flagged", count: counts.issues },
+              ]}
+            />
+            <div className="ml-auto flex items-center gap-2">
+              <Filter className="size-3.5 text-ink-400" />
+              <select
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                className="h-9 px-3 rounded-lg bg-white/70 border border-ink-200/60 text-xs outline-none focus:border-brand-500 cursor-pointer"
+              >
+                <option value="all">All courses</option>
+                {courses.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
 
-      <DataTable
-        data={filtered}
-        columns={columns}
-        rowKey={(r) => r.recordId}
-        pageSize={12}
-        searchField={(r) => `${r.courseCode} ${r.courseName} ${r.status}`}
-        searchPlaceholder="Search history…"
-        emptyTitle="No records in this view"
-        emptyHint="Try a different filter."
-      />
+          <DataTable
+            data={filtered}
+            columns={columns}
+            rowKey={(r) => r.recordId}
+            pageSize={12}
+            searchField={(r) => `${r.courseCode} ${r.courseName ?? ""} ${r.status}`}
+            searchPlaceholder="Search history…"
+            emptyTitle={rows.length === 0 ? "No attendance records yet" : "No records in this view"}
+            emptyHint={rows.length === 0 ? "Marks you make in live sessions will appear here." : "Try a different filter."}
+          />
+        </>
+      )}
     </>
   );
 }
 
 /**
  * Three-button export dropdown that hits /api/backend/reports/student/{id}/export
- * with the current auth token. Falls back to a toast-style error on failure.
+ * with the current auth token.
  */
 function ExportMenu() {
   const user = useAuthStore((s) => s.user);
@@ -190,9 +227,6 @@ function ExportMenu() {
       const token = typeof window !== "undefined"
         ? localStorage.getItem("attendai.accessToken")
         : null;
-      // In a real wiring the student's domain ID would come from the user
-      // object or a separate /me lookup; here we use the user id which the
-      // backend's ensureStudentScope() check will resolve correctly.
       const res = await fetch(
         `/api/backend/reports/student/${user.id}/export?format=${format}`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
