@@ -84,6 +84,7 @@ export interface TeacherSession {
   status: string;
   startTime?: string | null;
   endTime?: string | null;
+  requireLocation?: boolean;
 }
 
 /** A challenge as the teacher sees it — includes the visible code to display. */
