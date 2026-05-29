@@ -31,7 +31,11 @@ export default function LoginPage() {
       });
       router.replace(`/${res.user.role.toLowerCase()}`);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Could not sign in";
+      let msg = err instanceof ApiError ? err.message : "Could not sign in";
+      // Friendlier copy for a self-registered account still awaiting approval.
+      if (err instanceof ApiError && err.code === "AUTH_004" && /pending/i.test(err.message)) {
+        msg = "Your account is awaiting admin approval. You'll be able to sign in once it's approved.";
+      }
       setError(msg);
     } finally {
       setLoading(false);
@@ -141,6 +145,13 @@ export default function LoginPage() {
               {loading ? "Signing in…" : (<><span>Sign in</span><ArrowRight className="size-4" /></>)}
             </Button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-ink-500">
+            New student?{" "}
+            <Link href="/signup" className="font-medium text-brand-700 hover:text-brand-800 hover:underline">
+              Create an account
+            </Link>
+          </p>
 
           {isMock ? (
             <div className="mt-8 p-4 rounded-2xl bg-amber-50/60 ring-1 ring-amber-200/50">

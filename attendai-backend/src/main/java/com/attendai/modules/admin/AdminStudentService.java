@@ -75,6 +75,12 @@ public class AdminStudentService {
     }
 
     @Transactional(readOnly = true)
+    public java.util.List<StudentDto> listPending() {
+        return studentRepository.findByUser_StatusOrderByCreatedAtAsc(UserStatus.PENDING_VERIFICATION)
+                .stream().map(StudentDto::from).toList();
+    }
+
+    @Transactional(readOnly = true)
     public StudentDto get(Long id) {
         return studentRepository.findById(id)
                 .map(StudentDto::from)

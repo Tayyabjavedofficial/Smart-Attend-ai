@@ -16,6 +16,7 @@ export const qk = {
   admin: {
     dashboard: ["admin", "dashboard"] as const,
     students: ["admin", "students"] as const,
+    pendingStudents: ["admin", "students", "pending"] as const,
     teachers: ["admin", "teachers"] as const,
     courses:  ["admin", "courses"]  as const,
     sections: ["admin", "sections"] as const,
@@ -84,6 +85,13 @@ export function useStudents() {
   return useQuery({
     queryKey: qk.admin.students,
     queryFn: api.admin.listStudents,
+  });
+}
+
+export function usePendingStudents() {
+  return useQuery({
+    queryKey: qk.admin.pendingStudents,
+    queryFn: api.admin.listPendingStudents,
   });
 }
 

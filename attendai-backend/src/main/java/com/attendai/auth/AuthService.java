@@ -6,6 +6,9 @@ import com.attendai.config.AppProperties;
 import com.attendai.config.UserPrincipal;
 import com.attendai.domain.security.RefreshToken;
 import com.attendai.domain.security.RefreshTokenRepository;
+import com.attendai.domain.user.Role;
+import com.attendai.domain.user.Student;
+import com.attendai.domain.user.StudentRepository;
 import com.attendai.domain.user.User;
 import com.attendai.domain.user.UserRepository;
 import com.attendai.domain.user.UserStatus;
@@ -16,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +32,45 @@ public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
     private final AppProperties props;
+
+    /**
+     * Public student self-registration. The account starts as
+     * PENDING_VERIFICATION and cannot sign in until an admin approves it
+     * (which flips the status to ACTIVE).
+     */
+    @Transactional
+    public void register(com.attendai.auth.dto.RegisterRequest req) {
+        if (userRepository.existsByEmail(req.email())) {
+            throw new ApiException(HttpStatus.CONFLICT, "USER_DUPLICATE_EMAIL",
+                    "An account with this email already exists");
+        }
+        if (studentRepository.existsByRegistrationNumber(req.registrationNumber())) {
+            throw new ApiException(HttpStatus.CONFLICT, "STUDENT_DUPLICATE_REG",
+                    "That registration number is already registered");
+        }
+
+        User user = User.builder()
+                .fullName(req.fullName())
+                .email(req.email())
+                .passwordHash(passwordEncoder.encode(req.password()))
+                .role(Role.STUDENT)
+                .status(UserStatus.PENDING_VERIFICATION)
+                .build();
+        user = userRepository.save(user);
+
+        Student student = Student.builder()
+                .user(user)
+                .registrationNumber(req.registrationNumber())
+                .department(req.department())
+                .semester(req.semester())
+                .build();
+        studentRepository.save(student);
+    }
 
     @Transactional
     public LoginResponse login(LoginRequest req) {

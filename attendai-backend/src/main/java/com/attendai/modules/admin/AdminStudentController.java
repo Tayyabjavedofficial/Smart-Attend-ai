@@ -38,6 +38,12 @@ public class AdminStudentController {
         return ApiResponse.ok(PageResponse.from(service.search(sectionId, department, search, pageable)));
     }
 
+    @GetMapping("/pending")
+    @Operation(summary = "List self-registered students awaiting approval")
+    public ApiResponse<java.util.List<StudentDto>> pending() {
+        return ApiResponse.ok(service.listPending());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get one student by id")
     public ApiResponse<StudentDto> get(@PathVariable Long id) {

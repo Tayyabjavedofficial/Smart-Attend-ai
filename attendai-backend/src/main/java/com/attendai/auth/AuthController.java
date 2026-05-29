@@ -4,6 +4,7 @@ import com.attendai.auth.dto.ForgotPasswordRequest;
 import com.attendai.auth.dto.LoginRequest;
 import com.attendai.auth.dto.LoginResponse;
 import com.attendai.auth.dto.RefreshTokenRequest;
+import com.attendai.auth.dto.RegisterRequest;
 import com.attendai.auth.dto.ResetPasswordRequest;
 import com.attendai.auth.dto.TokenResponse;
 import com.attendai.common.response.ApiResponse;
@@ -11,6 +12,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,6 +29,14 @@ public class AuthController {
     @Operation(summary = "Authenticate and obtain access + refresh tokens")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    @PostMapping("/register")
+    @Operation(summary = "Student self-registration (creates a pending account for admin approval)")
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
+        authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.success("Account created. An administrator will review and approve it shortly."));
     }
 
     @PostMapping("/refresh-token")

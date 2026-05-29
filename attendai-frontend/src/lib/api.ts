@@ -473,6 +473,14 @@ export const api = {
       });
     },
 
+    async register(body: {
+      fullName: string; email: string; password: string;
+      registrationNumber: string; department?: string; semester?: number;
+    }): Promise<void> {
+      if (MOCK) { await delay(null, 400); return; }
+      await request<void>("/auth/register", { method: "POST", body: JSON.stringify(body) });
+    },
+
     async forgotPassword(email: string): Promise<void> {
       if (MOCK) { await delay(null, 350); return; }
       await request("/auth/forgot-password", {
@@ -521,6 +529,10 @@ export const api = {
     listStudents: () => MOCK
       ? delay(mock.STUDENTS)
       : requestList<mock.StudentRow>("/admin/students"),
+
+    listPendingStudents: () => MOCK
+      ? delay([] as mock.StudentRow[])
+      : requestList<mock.StudentRow>("/admin/students/pending"),
 
     createStudent: (body: Partial<mock.StudentRow> & { password?: string }) => MOCK
       ? delay({ ...body, id: Math.floor(Math.random() * 10000), status: "ACTIVE" } as mock.StudentRow)
