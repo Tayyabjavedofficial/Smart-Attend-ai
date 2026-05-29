@@ -25,6 +25,9 @@ export const qk = {
   teacher: {
     courses:  ["teacher", "courses"]  as const,
     sessions: ["teacher", "sessions"] as const,
+    students: ["teacher", "students"] as const,
+    alerts:   ["teacher", "alerts"]   as const,
+    analytics:["teacher", "analytics"] as const,
     sessionLive: (id: number) => ["teacher", "sessions", id, "live"] as const,
   },
   student: {
@@ -199,6 +202,16 @@ export function useTeacherCourses() {
 
 export function useTeacherSessions() {
   return useQuery({ queryKey: qk.teacher.sessions, queryFn: api.teacher.listSessions });
+}
+
+export function useTeacherStudents() {
+  return useQuery({ queryKey: qk.teacher.students, queryFn: api.teacher.students });
+}
+export function useTeacherAlerts() {
+  return useQuery({ queryKey: qk.teacher.alerts, queryFn: api.teacher.alerts });
+}
+export function useTeacherAnalytics() {
+  return useQuery({ queryKey: qk.teacher.analytics, queryFn: api.teacher.analytics });
 }
 
 export function useSessionLive(sessionId: number | null) {

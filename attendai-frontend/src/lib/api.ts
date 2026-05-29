@@ -99,6 +99,50 @@ export interface ChallengeInfo {
 
 export interface StartResult { session: TeacherSession; challenge: ChallengeInfo; }
 
+/** A student in one of the teacher's classes (backend TeacherStudentRow). */
+export interface TeacherStudentRow {
+  studentId: number;
+  fullName: string;
+  email: string;
+  registrationNumber?: string | null;
+  courseCode: string;
+  courseName: string;
+  sectionName: string;
+}
+
+/** A proxy alert on one of the teacher's sessions (backend TeacherAlertRow). */
+export interface TeacherAlertRow {
+  id: number;
+  studentId: number;
+  sessionId?: number | null;
+  alertType: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  description: string;
+  riskScore: number;
+  status: string;
+  createdAt: string;
+}
+
+/** Per-class analytics row + the overall summary (backend Analytics). */
+export interface TeacherCourseStat {
+  courseCode: string;
+  courseName: string;
+  sectionName: string;
+  students: number;
+  sessions: number;
+  present: number;
+  total: number;
+  attendancePct: number;
+}
+export interface TeacherAnalytics {
+  totalCourses: number;
+  totalStudents: number;
+  totalSessions: number;
+  activeSessions: number;
+  overallAttendancePct: number;
+  perClass: TeacherCourseStat[];
+}
+
 /** A class the student is enrolled in (backend CourseSummary). */
 export interface StudentCourseSummary {
   enrollmentId: number;
@@ -585,6 +629,18 @@ export const api = {
     closeSession: (id: number) => MOCK
       ? delay({ id, status: "CLOSED" } as TeacherSession)
       : request<TeacherSession>(`/teacher/attendance-sessions/${id}/close`, { method: "POST" }),
+
+    students: () => MOCK
+      ? delay([] as TeacherStudentRow[])
+      : requestList<TeacherStudentRow>("/teacher/students"),
+
+    alerts: () => MOCK
+      ? delay([] as TeacherAlertRow[])
+      : requestList<TeacherAlertRow>("/teacher/alerts"),
+
+    analytics: () => MOCK
+      ? delay({ totalCourses: 0, totalStudents: 0, totalSessions: 0, activeSessions: 0, overallAttendancePct: 0, perClass: [] } as TeacherAnalytics)
+      : request<TeacherAnalytics>("/teacher/analytics"),
   },
 
   // ----- STUDENT -----
