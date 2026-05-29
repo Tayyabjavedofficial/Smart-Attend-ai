@@ -28,4 +28,9 @@ public class Section extends Auditable {
 
     @Column(length = 80)
     private String department;
+
+    /** Optional cohort this section belongs to (semesters 1..8 of a program). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "batch_id")
+    private Batch batch;
 }

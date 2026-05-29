@@ -248,6 +248,77 @@ export interface AssignmentDto {
   sectionName: string;
 }
 
+/** A student on a section roster (backend SectionStudent). */
+export interface SectionStudent {
+  id: number;
+  fullName: string;
+  registrationNumber?: string | null;
+  email: string;
+  status?: string | null;
+}
+
+/** A subject taught in a section, with its teacher (backend SectionSubject). */
+export interface SectionSubject {
+  assignmentId: number;
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  creditHours?: number | null;
+  teacherId: number;
+  teacherName: string;
+}
+
+/** Full section drill-down (backend SectionDetailDto). */
+export interface SectionDetail {
+  id: number;
+  sectionName: string;
+  semester?: number | null;
+  department?: string | null;
+  batchId?: number | null;
+  batchName?: string | null;
+  studentsCount: number;
+  subjectsCount: number;
+  students: SectionStudent[];
+  subjects: SectionSubject[];
+}
+
+/** Fields the admin can change on a section. */
+export interface SectionPatch {
+  sectionName?: string;
+  semester?: number;
+  department?: string;
+  batchId?: number | null;
+}
+
+/** A section inside a batch's semester breakdown (backend BatchSectionDto). */
+export interface BatchSection {
+  id: number;
+  sectionName: string;
+  semester?: number | null;
+  department?: string | null;
+  studentsCount: number;
+}
+
+/** One semester's worth of sections within a batch (backend SemesterGroup). */
+export interface BatchSemesterGroup {
+  semester: number;
+  sections: BatchSection[];
+}
+
+/** Full batch drill-down (backend BatchDetailDto). */
+export interface BatchDetail {
+  id: number;
+  name: string;
+  program?: string | null;
+  department?: string | null;
+  startYear?: number | null;
+  totalSemesters: number;
+  advisor?: string | null;
+  sectionsCount: number;
+  studentsCount: number;
+  semesters: BatchSemesterGroup[];
+}
+
 // ============================================================
 // Request wrapper with 401 → refresh → retry
 // ============================================================
@@ -438,6 +509,49 @@ const MOCK_ANNOUNCEMENTS: Announcement[] = [
   { id: 3, title: "Faculty: new geofence radius live", body: "The campus geofence is now active for location-required sessions. Toggle 'Require location' when starting a session to enable it.", audience: "TEACHERS", pinned: false, authorId: 1, authorName: "Tayyab Admin", authorRole: "ADMIN", createdAt: new Date(Date.now() - 3 * 24 * 3600_000).toISOString() },
 ];
 
+/** Build a plausible section drill-down from the static mock tables. */
+function mockSectionDetail(id: number): SectionDetail {
+  const sec = mock.SECTIONS.find(s => s.id === id) ?? mock.SECTIONS[0];
+  const students: SectionStudent[] = mock.STUDENTS
+    .filter(s => s.section === sec.sectionName)
+    .map(s => ({ id: s.id, fullName: s.fullName, registrationNumber: s.registrationNumber, email: s.email, status: s.status }));
+  const subjects: SectionSubject[] = mock.COURSES
+    .filter(c => c.department === sec.department)
+    .slice(0, sec.subjectsCount ?? 4)
+    .map((c, i) => ({
+      assignmentId: i + 1, courseId: c.id, courseCode: c.courseCode, courseName: c.courseName,
+      creditHours: c.creditHours, teacherId: 21 + (i % 3),
+      teacherName: mock.TEACHERS[i % mock.TEACHERS.length].fullName,
+    }));
+  return {
+    id: sec.id, sectionName: sec.sectionName, semester: sec.semester, department: sec.department,
+    batchId: sec.batchId ?? null, batchName: sec.batchName ?? null,
+    studentsCount: students.length, subjectsCount: subjects.length, students, subjects,
+  };
+}
+
+/** Build a plausible batch drill-down (sections grouped by semester). */
+function mockBatchDetail(id: number): BatchDetail {
+  const b = mock.BATCHES.find(x => x.id === id) ?? mock.BATCHES[0];
+  const sections = mock.SECTIONS.filter(s => s.batchId === b.id);
+  const semesters: BatchSemesterGroup[] = [];
+  for (let sem = 1; sem <= b.totalSemesters; sem++) {
+    semesters.push({
+      semester: sem,
+      sections: sections.filter(s => s.semester === sem).map(s => ({
+        id: s.id, sectionName: s.sectionName, semester: s.semester, department: s.department, studentsCount: s.studentsCount,
+      })),
+    });
+  }
+  return {
+    id: b.id, name: b.name, program: b.program, department: b.department, startYear: b.startYear,
+    totalSemesters: b.totalSemesters, advisor: b.advisor,
+    sectionsCount: sections.length,
+    studentsCount: sections.reduce((sum, s) => sum + s.studentsCount, 0),
+    semesters,
+  };
+}
+
 // ============================================================
 // Public API namespaces
 // ============================================================
@@ -586,9 +700,46 @@ export const api = {
       ? delay({ ...body, id: Math.floor(Math.random() * 10000) } as mock.SectionRow)
       : request<mock.SectionRow>("/admin/sections", { method: "POST", body: JSON.stringify(body) }),
 
+    updateSection: (id: number, body: SectionPatch) => MOCK
+      ? delay({ ...body, id } as unknown as mock.SectionRow)
+      : request<mock.SectionRow>(`/admin/sections/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+
     deleteSection: (id: number) => MOCK
       ? delay({ id })
       : request<void>(`/admin/sections/${id}`, { method: "DELETE" }),
+
+    sectionDetail: (id: number): Promise<SectionDetail> => MOCK
+      ? delay(mockSectionDetail(id))
+      : request<SectionDetail>(`/admin/sections/${id}/detail`),
+
+    // ----- Batches (cohorts spanning semesters 1..8) -----
+    listBatches: () => MOCK
+      ? delay(mock.BATCHES)
+      : requestList<mock.BatchRow>("/admin/batches"),
+
+    batchDetail: (id: number): Promise<BatchDetail> => MOCK
+      ? delay(mockBatchDetail(id))
+      : request<BatchDetail>(`/admin/batches/${id}`),
+
+    createBatch: (body: Partial<mock.BatchRow>) => MOCK
+      ? delay({ ...body, id: Math.floor(Math.random() * 10000), sectionsCount: 0, studentsCount: 0 } as mock.BatchRow)
+      : request<mock.BatchRow>("/admin/batches", { method: "POST", body: JSON.stringify(body) }),
+
+    updateBatch: (id: number, body: Partial<mock.BatchRow>) => MOCK
+      ? delay({ ...body, id } as mock.BatchRow)
+      : request<mock.BatchRow>(`/admin/batches/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+
+    deleteBatch: (id: number) => MOCK
+      ? delay({ id })
+      : request<void>(`/admin/batches/${id}`, { method: "DELETE" }),
+
+    attachSectionToBatch: (batchId: number, sectionId: number) => MOCK
+      ? delay(undefined)
+      : request<void>(`/admin/batches/${batchId}/sections/${sectionId}`, { method: "POST" }),
+
+    detachSectionFromBatch: (batchId: number, sectionId: number) => MOCK
+      ? delay(undefined)
+      : request<void>(`/admin/batches/${batchId}/sections/${sectionId}`, { method: "DELETE" }),
 
     // ----- Teacher ↔ course ↔ section assignments -----
     listAssignments: () => MOCK

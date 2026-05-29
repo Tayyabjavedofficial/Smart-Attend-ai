@@ -76,17 +76,38 @@ export type SectionRow = {
   semester: number;
   department: string;
   studentsCount: number;
+  subjectsCount?: number;
+  batchId?: number | null;
+  batchName?: string | null;
 };
 
 export const SECTIONS: SectionRow[] = [
-  { id: 1, sectionName: "BCS-7A", semester: 7, department: "Computer Science", studentsCount: 45 },
-  { id: 2, sectionName: "BCS-7B", semester: 7, department: "Computer Science", studentsCount: 42 },
-  { id: 3, sectionName: "BCS-5A", semester: 5, department: "Computer Science", studentsCount: 48 },
-  { id: 4, sectionName: "EE-5A", semester: 5, department: "Electrical Eng.", studentsCount: 38 },
-  { id: 5, sectionName: "MA-3A", semester: 3, department: "Mathematics", studentsCount: 32 },
-  { id: 6, sectionName: "MA-3B", semester: 3, department: "Mathematics", studentsCount: 30 },
-  { id: 7, sectionName: "BBA-3B", semester: 3, department: "Business", studentsCount: 44 },
-  { id: 8, sectionName: "PH-5A", semester: 5, department: "Physics", studentsCount: 28 },
+  { id: 1, sectionName: "BCS-7A", semester: 7, department: "Computer Science", studentsCount: 45, subjectsCount: 5, batchId: 1, batchName: "BCS Fall 2021" },
+  { id: 2, sectionName: "BCS-7B", semester: 7, department: "Computer Science", studentsCount: 42, subjectsCount: 5, batchId: 1, batchName: "BCS Fall 2021" },
+  { id: 3, sectionName: "BCS-5A", semester: 5, department: "Computer Science", studentsCount: 48, subjectsCount: 6, batchId: 2, batchName: "BCS Fall 2022" },
+  { id: 4, sectionName: "EE-5A", semester: 5, department: "Electrical Eng.", studentsCount: 38, subjectsCount: 4, batchId: 3, batchName: "BEE Fall 2022" },
+  { id: 5, sectionName: "MA-3A", semester: 3, department: "Mathematics", studentsCount: 32, subjectsCount: 4, batchId: null, batchName: null },
+  { id: 6, sectionName: "MA-3B", semester: 3, department: "Mathematics", studentsCount: 30, subjectsCount: 4, batchId: null, batchName: null },
+  { id: 7, sectionName: "BBA-3B", semester: 3, department: "Business", studentsCount: 44, subjectsCount: 3, batchId: null, batchName: null },
+  { id: 8, sectionName: "PH-5A", semester: 5, department: "Physics", studentsCount: 28, subjectsCount: 3, batchId: null, batchName: null },
+];
+
+export type BatchRow = {
+  id: number;
+  name: string;
+  program?: string | null;
+  department?: string | null;
+  startYear?: number | null;
+  totalSemesters: number;
+  advisor?: string | null;
+  sectionsCount: number;
+  studentsCount: number;
+};
+
+export const BATCHES: BatchRow[] = [
+  { id: 1, name: "BCS Fall 2021", program: "BS Computer Science", department: "Computer Science", startYear: 2021, totalSemesters: 8, advisor: "Dr. Sarah Johnson", sectionsCount: 2, studentsCount: 87 },
+  { id: 2, name: "BCS Fall 2022", program: "BS Computer Science", department: "Computer Science", startYear: 2022, totalSemesters: 8, advisor: "Prof. Rizwan Khan", sectionsCount: 1, studentsCount: 48 },
+  { id: 3, name: "BEE Fall 2022", program: "BS Electrical Eng.", department: "Electrical Eng.", startYear: 2022, totalSemesters: 8, advisor: "Dr. Imran Malik", sectionsCount: 1, studentsCount: 38 },
 ];
 
 export type AlertRow = {

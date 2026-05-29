@@ -20,6 +20,18 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     /** Self-registered students awaiting admin approval, oldest first. */
     List<Student> findByUser_StatusOrderByCreatedAtAsc(UserStatus status);
 
+    /** Students whose home section is the given one (for the section roster). */
+    List<Student> findBySectionId(Long sectionId);
+
+    long countBySectionId(Long sectionId);
+
+    /**
+     * Student head-count per section in one query (avoids an N+1 over sections).
+     * Each row is {@code [sectionId, count]}; sections with no students are absent.
+     */
+    @Query("select s.section.id, count(s) from Student s where s.section is not null group by s.section.id")
+    List<Object[]> countGroupedBySection();
+
     @Query("""
             select s from Student s
             where (:sectionId is null or s.section.id = :sectionId)

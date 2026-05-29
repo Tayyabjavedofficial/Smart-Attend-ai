@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import {
-  LayoutDashboard, Users, GraduationCap, BookOpen, Layers, Link2, UserPlus,
+  LayoutDashboard, Users, GraduationCap, BookOpen, Layers, Boxes, Link2, UserPlus,
   AlertTriangle, ShieldCheck, FileBarChart, Settings, Megaphone, Bell, LifeBuoy, UserCheck,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -17,6 +17,7 @@ function buildNav(pendingCount: number): NavItem[] {
     { href: "/admin/teachers", label: "Teachers", icon: GraduationCap, section: "Manage" },
     { href: "/admin/courses", label: "Courses", icon: BookOpen, section: "Manage" },
     { href: "/admin/sections", label: "Sections", icon: Layers, section: "Manage" },
+    { href: "/admin/batches", label: "Batches", icon: Boxes, section: "Manage" },
     { href: "/admin/assignments", label: "Assignments", icon: Link2, section: "Manage" },
     { href: "/admin/enrollments", label: "Enrollments", icon: UserPlus, section: "Manage" },
     { href: "/admin/announcements", label: "Announcements", icon: Megaphone, section: "Engage" },

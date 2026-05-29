@@ -4,8 +4,8 @@ import {
   useMutation, useQuery, useQueryClient,
   type UseMutationOptions, type UseQueryOptions,
 } from "@tanstack/react-query";
-import { api, ApiError, type AssignmentDto, type ProfilePatch } from "@/lib/api";
-import type { StudentRow, TeacherRow, CourseRow, SectionRow } from "@/lib/mockData";
+import { api, ApiError, type AssignmentDto, type ProfilePatch, type SectionPatch } from "@/lib/api";
+import type { StudentRow, TeacherRow, CourseRow, SectionRow, BatchRow } from "@/lib/mockData";
 import type { Announcement, NewAnnouncement } from "@/types/api";
 
 /**
@@ -20,6 +20,9 @@ export const qk = {
     teachers: ["admin", "teachers"] as const,
     courses:  ["admin", "courses"]  as const,
     sections: ["admin", "sections"] as const,
+    sectionDetail: (id: number) => ["admin", "sections", id, "detail"] as const,
+    batches:  ["admin", "batches"]  as const,
+    batchDetail: (id: number) => ["admin", "batches", id, "detail"] as const,
     alerts:   ["admin", "alerts"]   as const,
     devices:  ["admin", "devices"]  as const,
     assignments: ["admin", "assignments"] as const,
@@ -176,6 +179,82 @@ export const useCreateSection = (opts?: UseMutationOptions<SectionRow, ApiError,
 
 export const useDeleteSection = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
   useInvalidating(api.admin.deleteSection, qk.admin.sections, opts);
+
+export function useSectionDetail(id: number | null) {
+  return useQuery({
+    queryKey: id ? qk.admin.sectionDetail(id) : ["admin", "sections", "no-id", "detail"],
+    queryFn: () => api.admin.sectionDetail(id!),
+    enabled: id != null,
+  });
+}
+
+/** Editing a section can move it between batches, so invalidate batches too. */
+export const useUpdateSection = (opts?: UseMutationOptions<SectionRow, ApiError, { id: number; patch: SectionPatch }>) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: number; patch: SectionPatch }) => api.admin.updateSection(id, patch),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: qk.admin.sections });
+      qc.invalidateQueries({ queryKey: qk.admin.batches });
+      opts?.onSuccess?.(...args);
+    },
+    ...opts,
+  });
+};
+
+// ============================================================
+// Batches (cohorts spanning semesters 1..8)
+// ============================================================
+
+export function useBatches() {
+  return useQuery({ queryKey: qk.admin.batches, queryFn: api.admin.listBatches });
+}
+
+export function useBatchDetail(id: number | null) {
+  return useQuery({
+    queryKey: id ? qk.admin.batchDetail(id) : ["admin", "batches", "no-id", "detail"],
+    queryFn: () => api.admin.batchDetail(id!),
+    enabled: id != null,
+  });
+}
+
+export const useCreateBatch = (opts?: UseMutationOptions<BatchRow, ApiError, Partial<BatchRow>>) =>
+  useInvalidating(api.admin.createBatch, qk.admin.batches, opts);
+
+export const useUpdateBatch = (opts?: UseMutationOptions<BatchRow, ApiError, { id: number; patch: Partial<BatchRow> }>) =>
+  useInvalidating(
+    ({ id, patch }) => api.admin.updateBatch(id, patch),
+    qk.admin.batches,
+    opts,
+  );
+
+export const useDeleteBatch = (opts?: UseMutationOptions<unknown, ApiError, number>) =>
+  useInvalidating(api.admin.deleteBatch, qk.admin.batches, opts);
+
+/** Attach/detach a section to a batch — touches both sections and batches. */
+function useBatchSectionMutation(
+  fn: (vars: { batchId: number; sectionId: number }) => Promise<unknown>,
+  opts?: UseMutationOptions<unknown, ApiError, { batchId: number; sectionId: number }>,
+) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (...args) => {
+      const { batchId } = args[1];
+      qc.invalidateQueries({ queryKey: qk.admin.batches });
+      qc.invalidateQueries({ queryKey: qk.admin.sections });
+      qc.invalidateQueries({ queryKey: qk.admin.batchDetail(batchId) });
+      opts?.onSuccess?.(...args);
+    },
+    ...opts,
+  });
+}
+
+export const useAttachSection = (opts?: UseMutationOptions<unknown, ApiError, { batchId: number; sectionId: number }>) =>
+  useBatchSectionMutation(({ batchId, sectionId }) => api.admin.attachSectionToBatch(batchId, sectionId), opts);
+
+export const useDetachSection = (opts?: UseMutationOptions<unknown, ApiError, { batchId: number; sectionId: number }>) =>
+  useBatchSectionMutation(({ batchId, sectionId }) => api.admin.detachSectionFromBatch(batchId, sectionId), opts);
 
 export function useAssignments() {
   return useQuery({ queryKey: qk.admin.assignments, queryFn: api.admin.listAssignments });
