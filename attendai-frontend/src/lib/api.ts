@@ -14,6 +14,7 @@ import type {
   ApiResponse, LoginResponse, User,
 } from "@/types/api";
 import * as mock from "@/lib/mockData";
+import { useAuthStore } from "@/store/authStore";
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK === "true";
 const BASE = "/api/backend";
@@ -324,6 +325,12 @@ async function tryRefresh(): Promise<string | null> {
         null,                                              // don't attach the (expired) access token
       );
       setAccessToken(data.accessToken);
+      // The backend rotates refresh tokens (old one is revoked), so we MUST
+      // persist the new pair — otherwise the next refresh reuses a revoked
+      // token and fails.
+      try {
+        useAuthStore.setState({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+      } catch { /* store not ready (SSR) — localStorage access token is enough for this tab */ }
       return data.accessToken;
     } catch {
       return null;
@@ -338,12 +345,18 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   try {
     return await rawRequest<T>(path, init);
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401 && !path.startsWith("/auth/")) {
+    // An expired access token surfaces as 401 normally, but because Spring
+    // falls back to an anonymous principal it often comes back as 403
+    // ("Access denied"). Try a token refresh + one retry for both, so an
+    // expired session self-heals instead of stranding the user.
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403) && !path.startsWith("/auth/")) {
       const newToken = await tryRefresh();
       if (newToken) {
         return rawRequest<T>(path, init, newToken);
       }
-      emitLogout();
+      // Refresh failed: a 401 means the session is truly gone — log out.
+      // A 403 with no refresh available is a genuine authorization error.
+      if (err.status === 401) emitLogout();
     }
     throw err;
   }
