@@ -29,6 +29,7 @@ export const qk = {
   },
   student: {
     courses: ["student", "courses"] as const,
+    available: ["student", "available-classes"] as const,
     active:  ["student", "active-sessions"] as const,
     history: ["student", "history"] as const,
     percentage: ["student", "percentage"] as const,
@@ -214,6 +215,37 @@ export function useSessionLive(sessionId: number | null) {
 
 export function useMyCourses() {
   return useQuery({ queryKey: qk.student.courses, queryFn: api.student.myCourses });
+}
+
+export function useAvailableClasses() {
+  return useQuery({ queryKey: qk.student.available, queryFn: api.student.availableClasses });
+}
+
+export function useEnrollSelf(opts?: UseMutationOptions<Awaited<ReturnType<typeof api.student.enrollSelf>>, ApiError, { courseId: number; sectionId: number }>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, sectionId }: { courseId: number; sectionId: number }) => api.student.enrollSelf(courseId, sectionId),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: qk.student.courses });
+      qc.invalidateQueries({ queryKey: qk.student.available });
+      qc.invalidateQueries({ queryKey: qk.student.active });
+      opts?.onSuccess?.(...args);
+    },
+    ...opts,
+  });
+}
+
+export function useUnenrollSelf(opts?: UseMutationOptions<void, ApiError, number>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (enrollmentId: number) => api.student.unenrollSelf(enrollmentId),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: qk.student.courses });
+      qc.invalidateQueries({ queryKey: qk.student.available });
+      opts?.onSuccess?.(...args);
+    },
+    ...opts,
+  });
 }
 
 export function useActiveSessions() {

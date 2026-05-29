@@ -99,6 +99,33 @@ export interface ChallengeInfo {
 
 export interface StartResult { session: TeacherSession; challenge: ChallengeInfo; }
 
+/** A class the student is enrolled in (backend CourseSummary). */
+export interface StudentCourseSummary {
+  enrollmentId: number;
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  sectionId: number;
+  sectionName: string;
+}
+
+/** A class the student can self-enroll in (backend AvailableClass). */
+export interface AvailableClass {
+  courseId: number;
+  courseCode: string;
+  courseName: string;
+  sectionId: number;
+  sectionName: string;
+  teacherName: string;
+  enrolled: boolean;
+}
+
+/** Attendance percentages (backend PercentageResult). */
+export interface PercentageResult {
+  overall: number;
+  perCourse: { courseCode: string; courseName: string; percentage: number; present: number; total: number }[];
+}
+
 /** An active attendance session a student is enrolled in (backend SessionDto). */
 export interface StudentSession {
   id: number;
@@ -570,8 +597,20 @@ export const api = {
           courseName: c.courseName,
           sectionId: 1,
           sectionName: "BCS-7A",
-        })))
-      : requestList<unknown>("/student/courses"),
+        })) as StudentCourseSummary[])
+      : requestList<StudentCourseSummary>("/student/courses"),
+
+    availableClasses: () => MOCK
+      ? delay([] as AvailableClass[])
+      : requestList<AvailableClass>("/student/available-classes"),
+
+    enrollSelf: (courseId: number, sectionId: number) => MOCK
+      ? delay({ enrollmentId: Date.now(), courseId, courseCode: "", courseName: "", sectionId, sectionName: "" } as StudentCourseSummary)
+      : request<StudentCourseSummary>("/student/enroll", { method: "POST", body: JSON.stringify({ courseId, sectionId }) }),
+
+    unenrollSelf: (enrollmentId: number) => MOCK
+      ? delay(undefined)
+      : request<void>(`/student/enroll/${enrollmentId}`, { method: "DELETE" }),
 
     activeSessions: () => MOCK
       ? delay(mock.SESSIONS.filter(s => s.status === "ACTIVE") as unknown as StudentSession[])
@@ -586,8 +625,8 @@ export const api = {
       : request<{ content: unknown[]; totalElements: number }>("/student/attendance/history"),
 
     percentage: () => MOCK
-      ? delay({ overall: 87.5, courseBreakdown: [] })
-      : request("/student/attendance/percentage"),
+      ? delay({ overall: 87.5, perCourse: [] } as PercentageResult)
+      : request<PercentageResult>("/student/attendance/percentage"),
 
     markAttendance: (body: {
       sessionId: number; challengeId: number;
