@@ -8,6 +8,7 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { LatestAnnouncements } from "@/components/announcements/LatestAnnouncements";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useAuthStore } from "@/store/authStore";
@@ -61,7 +62,7 @@ export default function StudentDashboardPage() {
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 stagger">
         <StatCard label="Overall Attendance" value={overall != null ? `${overall.toFixed(1)}%` : "—"} caption="This semester" icon={Award} accent="brand" />
         <StatCard label="Enrolled Courses" value={courses.length} caption="Tap to manage" icon={BookOpen} accent="blue" />
         <StatCard label="Live Now" value={live.length} caption={live.length ? "Mark before it closes" : "No live sessions"} icon={Radio} accent={live.length ? "brand" : "amber"} chip={live.length ? { label: "Live", tone: "live" } : undefined} />
@@ -118,6 +119,8 @@ export default function StudentDashboardPage() {
           </div>
         </Card>
       </div>
+
+      <LatestAnnouncements role="STUDENT" className="mt-4" />
     </>
   );
 }

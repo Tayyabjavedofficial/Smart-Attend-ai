@@ -12,6 +12,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: number;
+  /** Optional group heading; consecutive items sharing a section render under one label. */
+  section?: string;
 }
 
 export function Sidebar({
@@ -42,33 +44,40 @@ export function Sidebar({
         </div>
       </div>
 
-      <p className="text-[0.65rem] uppercase tracking-[0.18em] text-white/40 px-2 mb-2">Navigation</p>
       <nav className="flex-1 space-y-0.5 overflow-y-auto -mr-2 pr-2">
-        {navItems.map((item) => {
+        {navItems.map((item, i) => {
           const active = pathname === item.href || (item.href !== "/" + roleLabel.toLowerCase() && pathname?.startsWith(item.href));
           const Icon = item.icon;
+          const showSection = item.section && item.section !== navItems[i - 1]?.section;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[0.875rem] transition-all relative",
-                active
-                  ? "bg-white text-brand-700 font-medium shadow-glass"
-                  : "text-white/75 hover:text-white hover:bg-white/8"
-              )}
-            >
-              <Icon className="size-[18px] shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {item.badge ? (
-                <span className={cn(
-                  "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[0.65rem] font-semibold",
-                  active ? "bg-brand-600 text-white" : "bg-brand-500 text-white"
-                )}>
-                  {item.badge}
-                </span>
+            <div key={item.href}>
+              {showSection ? (
+                <p className="text-[0.6rem] uppercase tracking-[0.18em] text-white/35 px-2 mb-1.5 mt-3 first:mt-0">
+                  {item.section}
+                </p>
               ) : null}
-            </Link>
+              <Link
+                href={item.href}
+                className={cn(
+                  "group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[0.875rem] transition-all relative",
+                  active
+                    ? "bg-white text-brand-700 font-medium shadow-glass"
+                    : "text-white/75 hover:text-white hover:bg-white/10"
+                )}
+              >
+                {active ? <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-brand-500" /> : null}
+                <Icon className={cn("size-[18px] shrink-0 transition-transform group-hover:scale-110", active && "text-brand-600")} />
+                <span className="flex-1">{item.label}</span>
+                {item.badge ? (
+                  <span className={cn(
+                    "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[0.65rem] font-semibold",
+                    active ? "bg-brand-600 text-white" : "bg-brand-500 text-white"
+                  )}>
+                    {item.badge}
+                  </span>
+                ) : null}
+              </Link>
+            </div>
           );
         })}
       </nav>

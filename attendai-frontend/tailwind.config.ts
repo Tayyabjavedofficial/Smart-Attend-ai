@@ -5,44 +5,46 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Brand palette - deep institutional teal with warm accents
+        // Brand palette - iOS system blue, deepening to navy for dark surfaces
         brand: {
-          50: "#E7F4EF",
-          100: "#C7E6D9",
-          200: "#9FD3BC",
-          300: "#6FBD9C",
-          400: "#3FA47A",
-          500: "#1D9E75",
-          600: "#0F6E56",
-          700: "#0A523F",
-          800: "#063828",
-          900: "#031E16",
+          50: "#EAF4FF",
+          100: "#D2E7FF",
+          200: "#A9D0FF",
+          300: "#74B0FF",
+          400: "#3D90FF",
+          500: "#0A84FF",
+          600: "#0066E6",
+          700: "#0050B5",
+          800: "#003A85",
+          900: "#00214D",
         },
         ink: {
-          50: "#F6F5F0",
-          100: "#EDEAE0",
-          200: "#D6D2C2",
-          300: "#A8A496",
-          400: "#73726C",
-          500: "#4F4E4A",
-          600: "#3D3D3A",
-          700: "#2A2A28",
-          800: "#1A1A19",
-          900: "#0D0D0C",
+          50: "#F5F7FA",
+          100: "#E9EDF3",
+          200: "#D2D9E4",
+          300: "#A3ADBF",
+          400: "#6E7889",
+          500: "#4C5566",
+          600: "#3A4250",
+          700: "#272D38",
+          800: "#171B22",
+          900: "#0B0E13",
         },
         canvas: {
-          DEFAULT: "#F4F1EA", // warm off-white background
-          alt: "#EDE9DF",
+          DEFAULT: "#EEF2F8", // cool off-white background
+          alt: "#E3E9F2",
         },
         glass: {
-          DEFAULT: "rgba(255, 255, 255, 0.62)",
-          strong: "rgba(255, 255, 255, 0.85)",
-          dark: "rgba(6, 56, 40, 0.55)",
+          DEFAULT: "rgba(255, 255, 255, 0.66)",
+          strong: "rgba(255, 255, 255, 0.86)",
+          dark: "rgba(0, 33, 77, 0.55)",
         },
         accent: {
-          amber: "#D08C3A",
-          rose: "#C2576B",
-          ocean: "#3B7DA8",
+          amber: "#E0922A",
+          rose: "#FF3B57",
+          ocean: "#0A84FF",
+          violet: "#5E5CE6",
+          teal: "#30C8C9",
         },
       },
       fontFamily: {
@@ -57,9 +59,10 @@ const config: Config = {
         "3xl": "28px",
       },
       boxShadow: {
-        glass: "0 1px 2px rgba(6, 56, 40, 0.04), 0 8px 24px rgba(6, 56, 40, 0.06)",
-        "glass-lg": "0 2px 4px rgba(6, 56, 40, 0.06), 0 16px 40px rgba(6, 56, 40, 0.10)",
-        inset: "inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+        glass: "0 1px 2px rgba(10, 60, 120, 0.05), 0 8px 24px rgba(10, 60, 120, 0.08)",
+        "glass-lg": "0 2px 4px rgba(10, 60, 120, 0.07), 0 18px 44px rgba(10, 60, 120, 0.14)",
+        inset: "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
+        glow: "0 0 0 1px rgba(10, 132, 255, 0.18), 0 8px 30px rgba(10, 132, 255, 0.22)",
       },
       backgroundImage: {
         "grain":
@@ -69,6 +72,18 @@ const config: Config = {
         "fade-up": {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.96) translateY(6px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
+        },
+        "slide-in": {
+          "0%": { opacity: "0", transform: "translateX(-10px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
@@ -81,6 +96,9 @@ const config: Config = {
       },
       animation: {
         "fade-up": "fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "scale-in": "scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "slide-in": "slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
+        float: "float 5s ease-in-out infinite",
         shimmer: "shimmer 2.4s linear infinite",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
       },

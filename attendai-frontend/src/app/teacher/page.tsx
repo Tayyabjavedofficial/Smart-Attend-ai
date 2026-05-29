@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { DonutChart } from "@/components/charts/DonutChart";
+import { LatestAnnouncements } from "@/components/announcements/LatestAnnouncements";
 import { useAuthStore } from "@/store/authStore";
 import { useTeacherSessions, useSessionLive, useTeacherAnalytics, useTeacherAlerts } from "@/lib/hooks";
 import { useSessionLiveStream } from "@/lib/stomp";
@@ -54,7 +55,7 @@ export default function TeacherDashboardPage() {
       />
 
       {/* Stat cards — real analytics */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
         <StatCard label="Total Students" value={analytics?.totalStudents ?? "—"} caption={`Across ${analytics?.totalCourses ?? 0} classes`} icon={Users} accent="brand" />
         <StatCard label="Overall Attendance" value={analytics != null ? `${analytics.overallAttendancePct.toFixed(1)}%` : "—"} caption={`${analytics?.totalSessions ?? 0} sessions held`} icon={TrendingUp} accent="brand" />
         <StatCard
@@ -79,9 +80,9 @@ export default function TeacherDashboardPage() {
             <div className="flex items-center gap-5">
               <DonutChart
                 data={[
-                  { name: "Present", value: livePresent, color: "#1D9E75" },
-                  { name: "Absent", value: liveAbsent, color: "#C2576B" },
-                  { name: "Late", value: liveLate, color: "#EF9F27" },
+                  { name: "Present", value: livePresent, color: "#0A84FF" },
+                  { name: "Absent", value: liveAbsent, color: "#FF3B57" },
+                  { name: "Late", value: liveLate, color: "#E0922A" },
                 ]}
                 size={150}
                 centerLabel="Marked"
@@ -89,9 +90,9 @@ export default function TeacherDashboardPage() {
               />
               <ul className="flex-1 space-y-2.5 text-sm">
                 {[
-                  { label: "Present", color: "#1D9E75", value: livePresent },
-                  { label: "Late", color: "#EF9F27", value: liveLate },
-                  { label: "Absent", color: "#C2576B", value: liveAbsent },
+                  { label: "Present", color: "#0A84FF", value: livePresent },
+                  { label: "Late", color: "#E0922A", value: liveLate },
+                  { label: "Absent", color: "#FF3B57", value: liveAbsent },
                 ].map((row) => (
                   <li key={row.label} className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2 text-ink-600">
@@ -193,6 +194,8 @@ export default function TeacherDashboardPage() {
               </ul>
             )}
           </Card>
+
+          <LatestAnnouncements role="TEACHER" />
         </div>
       </div>
     </>

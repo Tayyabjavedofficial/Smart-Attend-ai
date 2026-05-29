@@ -71,3 +71,25 @@ export interface AttendanceHistoryRow {
   markedAt: string;
   riskScore: number | null;
 }
+
+export type AnnouncementAudience = "ALL" | "STUDENTS" | "TEACHERS";
+
+/** A campus announcement (backend AnnouncementDto). */
+export interface Announcement {
+  id: number;
+  title: string;
+  body: string;
+  audience: AnnouncementAudience;
+  pinned: boolean;
+  authorId: number;
+  authorName: string;
+  authorRole: Role;
+  createdAt: string;
+}
+
+export interface NewAnnouncement {
+  title: string;
+  body: string;
+  audience: AnnouncementAudience;
+  pinned: boolean;
+}

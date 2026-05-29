@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { api, ApiError, type AssignmentDto, type ProfilePatch } from "@/lib/api";
 import type { StudentRow, TeacherRow, CourseRow, SectionRow } from "@/lib/mockData";
+import type { Announcement, NewAnnouncement } from "@/types/api";
 
 /**
  * Centralised query-key tree. Keeping these as constants prevents the
@@ -279,6 +280,22 @@ export function usePercentage() {
 
 export const useRegisterFace = (opts?: UseMutationOptions<Awaited<ReturnType<typeof api.student.registerFace>>, ApiError, string[]>) =>
   useMutation({ mutationFn: (images: string[]) => api.student.registerFace(images), ...opts });
+
+// ============================================================
+// Announcements (shared across all roles)
+// ============================================================
+
+export const qkAnnouncements = ["announcements"] as const;
+
+export function useAnnouncements() {
+  return useQuery({ queryKey: qkAnnouncements, queryFn: api.announcements.list });
+}
+
+export const useCreateAnnouncement = (opts?: UseMutationOptions<Announcement, ApiError, NewAnnouncement>) =>
+  useInvalidating(api.announcements.create, qkAnnouncements, opts);
+
+export const useDeleteAnnouncement = (opts?: UseMutationOptions<void, ApiError, number>) =>
+  useInvalidating(api.announcements.remove, qkAnnouncements, opts);
 
 export const useMarkAttendance = (opts?: UseMutationOptions<unknown, ApiError, Parameters<typeof api.student.markAttendance>[0]>) => {
   const qc = useQueryClient();

@@ -23,13 +23,13 @@ export function Logo({
       >
         <defs>
           <linearGradient id="logoBg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#1D9E75" />
-            <stop offset="60%" stopColor="#0F6E56" />
-            <stop offset="100%" stopColor="#063828" />
+            <stop offset="0%" stopColor="#0A84FF" />
+            <stop offset="60%" stopColor="#0066E6" />
+            <stop offset="100%" stopColor="#003A85" />
           </linearGradient>
           <linearGradient id="logoInk" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#E7F4EF" />
+            <stop offset="100%" stopColor="#EAF4FF" />
           </linearGradient>
         </defs>
         {/* Rounded-square plate with subtle gradient + inner highlight */}

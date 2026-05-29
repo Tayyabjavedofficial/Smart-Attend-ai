@@ -11,7 +11,7 @@
  */
 
 import type {
-  ApiResponse, LoginResponse, User,
+  ApiResponse, LoginResponse, User, Announcement, NewAnnouncement,
 } from "@/types/api";
 import * as mock from "@/lib/mockData";
 import { useAuthStore } from "@/store/authStore";
@@ -432,6 +432,12 @@ export const MOCK_HINTS = [
   { role: "Student", email: "aarav.sharma@inst.edu",    password: "Student@123" },
 ];
 
+const MOCK_ANNOUNCEMENTS: Announcement[] = [
+  { id: 1, title: "Mid-term attendance audit this Friday", body: "All students must ensure their face profile is registered before Friday. Sessions flagged with low confidence will require an in-person review.", audience: "ALL", pinned: true, authorId: 1, authorName: "Tayyab Admin", authorRole: "ADMIN", createdAt: new Date(Date.now() - 3600_000).toISOString() },
+  { id: 2, title: "AI lab rescheduled to 2 PM", body: "Tomorrow's Artificial Intelligence lab (CS201) is moved to 2 PM in Lab B. The attendance session will open 5 minutes before class.", audience: "STUDENTS", pinned: false, authorId: 21, authorName: "Dr. Sarah Johnson", authorRole: "TEACHER", createdAt: new Date(Date.now() - 26 * 3600_000).toISOString() },
+  { id: 3, title: "Faculty: new geofence radius live", body: "The campus geofence is now active for location-required sessions. Toggle 'Require location' when starting a session to enable it.", audience: "TEACHERS", pinned: false, authorId: 1, authorName: "Tayyab Admin", authorRole: "ADMIN", createdAt: new Date(Date.now() - 3 * 24 * 3600_000).toISOString() },
+];
+
 // ============================================================
 // Public API namespaces
 // ============================================================
@@ -758,5 +764,20 @@ export const api = {
       downloadFile(
         `/reports/range/export?from=${from}&to=${to}&format=${format}${courseId ? `&courseId=${courseId}` : ""}`,
         `range-${from}-${to}.${format}`),
+  },
+
+  // ----- ANNOUNCEMENTS (read by all, posted by admin/teacher) -----
+  announcements: {
+    list: (): Promise<Announcement[]> => MOCK
+      ? delay(MOCK_ANNOUNCEMENTS)
+      : requestList<Announcement>("/announcements?size=50"),
+
+    create: (body: NewAnnouncement): Promise<Announcement> => MOCK
+      ? delay({ ...body, id: Math.floor(Math.random() * 100000), authorId: 1, authorName: "You", authorRole: "ADMIN", createdAt: new Date().toISOString() } as Announcement)
+      : request<Announcement>("/announcements", { method: "POST", body: JSON.stringify(body) }),
+
+    remove: (id: number): Promise<void> => MOCK
+      ? delay(undefined)
+      : request<void>(`/announcements/${id}`, { method: "DELETE" }),
   },
 };

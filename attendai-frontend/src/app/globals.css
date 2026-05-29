@@ -8,15 +8,15 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  --canvas: #f4f1ea;
-  --canvas-alt: #ede9df;
-  --ink-900: #0d0d0c;
-  --ink-700: #2a2a28;
-  --ink-500: #4f4e4a;
-  --ink-300: #a8a496;
-  --brand-600: #0f6e56;
-  --brand-500: #1d9e75;
-  --brand-50: #e7f4ef;
+  --canvas: #eef2f8;
+  --canvas-alt: #e3e9f2;
+  --ink-900: #0b0e13;
+  --ink-700: #272d38;
+  --ink-500: #4c5566;
+  --ink-300: #a3adbf;
+  --brand-600: #0066e6;
+  --brand-500: #0a84ff;
+  --brand-50: #eaf4ff;
 }
 
 html,
@@ -28,12 +28,12 @@ body {
   font-family: "Geist", system-ui, sans-serif;
   color: var(--ink-900);
   background-color: var(--canvas);
-  /* Layered atmospheric background: subtle warm canvas + faint conic gradient
+  /* Layered atmospheric background: cool canvas + soft blue/violet auroras
      + barely-there grain. Cards float on top with frosted-glass effect. */
   background-image:
-    radial-gradient(circle at 15% 0%, rgba(29, 158, 117, 0.10) 0%, transparent 40%),
-    radial-gradient(circle at 95% 100%, rgba(208, 140, 58, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(15, 110, 86, 0.04) 0%, transparent 60%);
+    radial-gradient(circle at 12% -5%, rgba(10, 132, 255, 0.16) 0%, transparent 42%),
+    radial-gradient(circle at 95% 105%, rgba(94, 92, 230, 0.14) 0%, transparent 46%),
+    radial-gradient(circle at 50% 50%, rgba(48, 200, 201, 0.05) 0%, transparent 60%);
   background-attachment: fixed;
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
@@ -59,27 +59,27 @@ body::before {
   letter-spacing: -0.01em;
 }
 
-/* Glass surface utility - the signature card style */
+/* Glass surface utility - the signature frosted card style (iOS vibrancy) */
 .glass {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.66);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 1px 2px rgba(6, 56, 40, 0.04),
-    0 8px 24px rgba(6, 56, 40, 0.06);
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 1px 2px rgba(10, 60, 120, 0.05),
+    0 8px 24px rgba(10, 60, 120, 0.08);
 }
 .glass-strong {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.92);
 }
 .glass-dark {
-  background: linear-gradient(180deg, #0a523f 0%, #063828 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 16px 40px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(165deg, #0a4fa0 0%, #00306f 55%, #00214d 100%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 16px 44px rgba(0, 24, 64, 0.35);
 }
 
 /* Scrollbar styling */
@@ -91,20 +91,20 @@ body::before {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(15, 110, 86, 0.18);
+  background: rgba(10, 132, 255, 0.20);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 110, 86, 0.32);
+  background: rgba(10, 132, 255, 0.36);
   background-clip: padding-box;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(29, 158, 117, 0.25);
-  color: #063828;
+  background: rgba(10, 132, 255, 0.25);
+  color: #00214d;
 }
 
 /* Subtle text-balance utility for headings */
@@ -121,7 +121,7 @@ body::before {
   position: absolute;
   inset: -4px;
   border-radius: 9999px;
-  background: rgba(29, 158, 117, 0.5);
+  background: rgba(10, 132, 255, 0.5);
   animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 @keyframes ping {
@@ -141,4 +141,46 @@ body::before {
 @keyframes in-up {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Staggered entrance: wrap a list/grid in .stagger and direct children
+   fade-up in sequence. Caps at 12 so long lists don't lag the last items. */
+.stagger > * {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1)  { animation-delay: 0.02s; }
+.stagger > *:nth-child(2)  { animation-delay: 0.06s; }
+.stagger > *:nth-child(3)  { animation-delay: 0.10s; }
+.stagger > *:nth-child(4)  { animation-delay: 0.14s; }
+.stagger > *:nth-child(5)  { animation-delay: 0.18s; }
+.stagger > *:nth-child(6)  { animation-delay: 0.22s; }
+.stagger > *:nth-child(7)  { animation-delay: 0.26s; }
+.stagger > *:nth-child(8)  { animation-delay: 0.30s; }
+.stagger > *:nth-child(n+9) { animation-delay: 0.34s; }
+
+/* Gentle lift on hover — used on interactive cards/tiles */
+.hover-lift {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .stagger > *,
+  .animate-fade-up,
+  .animate-scale-in,
+  .animate-slide-in,
+  .animate-in-up,
+  .hover-lift { animation: none !important; transition: none !important; }
+}
+
+/* Brand gradient text accent for hero numerals/headings */
+.text-gradient-brand {
+  background: linear-gradient(120deg, #0a84ff 0%, #5e5ce6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }

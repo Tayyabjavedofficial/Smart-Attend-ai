@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DonutChart } from "@/components/charts/DonutChart";
+import { LatestAnnouncements } from "@/components/announcements/LatestAnnouncements";
 import { useAdminDashboard, useProxyAlerts } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
 
@@ -60,7 +61,7 @@ export default function AdminDashboardPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger">
         <StatCard label="Total Students" value={isLoading ? "…" : (counters?.totalStudents?.toLocaleString() ?? "—")} caption="Registered" icon={Users} accent="brand" />
         <StatCard label="Total Teachers" value={isLoading ? "…" : (counters?.totalTeachers ?? "—")} caption="Faculty members" icon={GraduationCap} accent="blue" />
         <StatCard label="Total Courses" value={isLoading ? "…" : (counters?.totalCourses ?? "—")} caption="Offered this term" icon={BookOpen} accent="amber" />
@@ -94,8 +95,8 @@ export default function AdminDashboardPage() {
           <div className="flex flex-col items-center gap-4 py-2">
             <DonutChart
               data={[
-                { name: "Present", value: Math.round(overall), color: "#1D9E75" },
-                { name: "Remaining", value: Math.max(0, 100 - Math.round(overall)), color: "#E7EAE8" },
+                { name: "Present", value: Math.round(overall), color: "#0A84FF" },
+                { name: "Remaining", value: Math.max(0, 100 - Math.round(overall)), color: "#E3E9F2" },
               ]}
               size={170}
               centerLabel="Average"
@@ -115,8 +116,9 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
-      {/* Recent proxy alerts — real */}
-      <Card className="mt-4">
+      {/* Recent proxy alerts + latest announcements */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+      <Card>
         <CardHeader title="Recent Proxy Alerts" right={<Link className="text-xs text-brand-700 hover:underline" href="/admin/alerts">View all</Link>} />
         {alerts.length === 0 ? (
           <p className="py-6 text-center text-sm text-ink-400">No proxy alerts in the system.</p>
@@ -141,6 +143,9 @@ export default function AdminDashboardPage() {
           </ul>
         )}
       </Card>
+
+        <LatestAnnouncements role="ADMIN" />
+      </div>
     </>
   );
 }
