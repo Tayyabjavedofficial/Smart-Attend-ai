@@ -21,7 +21,7 @@ type ClassRef = { courseId: number; sectionId: number; courseCode: string; cours
 
 export default function TeacherSessionsPage() {
   const qc = useQueryClient();
-  const { data: sessions = [], isLoading, error, refetch } = useTeacherSessions();
+  const { data: sessions = [], isLoading, error, refetch, isFetching } = useTeacherSessions();
   const { data: assignments = [] } = useTeacherCourses();
 
   const [busy, setBusy] = useState(false);
@@ -123,7 +123,7 @@ export default function TeacherSessionsPage() {
         subtitle="Open a course, start a session, share the live code."
         icon={Radio}
         crumbs={[{ label: "Teacher", href: "/teacher" }, { label: "Sessions" }]}
-        action={<Button variant="secondary" onClick={() => refetch()}><RefreshCw className="size-4" /> Refresh</Button>}
+        action={<Button variant="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Refresh</Button>}
       />
 
       {assignments.length === 0 ? (

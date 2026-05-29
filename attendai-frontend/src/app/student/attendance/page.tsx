@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Radio, ScanFace, CheckCircle2, ArrowRight, ArrowLeft, Sparkles,
-  AlertCircle, Loader2, Clock, ShieldCheck, MapPin,
+  AlertCircle, Loader2, Clock, ShieldCheck, MapPin, RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -16,7 +16,7 @@ import { api, ApiError, type StudentSession, type CurrentChallenge, type MarkRes
 import { cn } from "@/lib/cn";
 
 export default function MarkAttendancePage() {
-  const { data: sessions = [], isLoading, error, refetch } = useActiveSessions();
+  const { data: sessions = [], isLoading, error, refetch, isFetching } = useActiveSessions();
   const markMut = useMarkAttendance();
 
   const [selected, setSelected] = useState<StudentSession | null>(null);
@@ -99,6 +99,11 @@ export default function MarkAttendancePage() {
         subtitle="Pick your live session, enter the code, and verify your face."
         icon={Radio}
         crumbs={[{ label: "Student", href: "/student" }, { label: "Mark Attendance" }]}
+        action={!selected && !result ? (
+          <Button variant="secondary" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} Refresh
+          </Button>
+        ) : undefined}
       />
 
       {/* RESULT */}

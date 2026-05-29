@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type LucideIcon, ChevronDown } from "lucide-react";
+import { type LucideIcon, Settings } from "lucide-react";
 import { Logo } from "@/components/icons/Logo";
+import { useProfile } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
 
 export interface NavItem {
@@ -25,6 +26,9 @@ export function Sidebar({
   roleSubtitle: string;
 }) {
   const pathname = usePathname();
+  const { data: profile } = useProfile();
+  const avatar = profile?.avatar ?? null;
+  const settingsHref = `/${roleLabel.toLowerCase()}/settings`;
 
   return (
     <aside className="hidden lg:flex w-[240px] shrink-0 flex-col glass-dark text-white/90 p-5 sticky top-4 self-start max-h-[calc(100vh-2rem)] rounded-3xl ml-4 mt-4 mb-4">
@@ -71,17 +75,28 @@ export function Sidebar({
 
       <div className="mt-4 pt-4 border-t border-white/8">
         <p className="text-[0.6rem] uppercase tracking-[0.18em] text-white/40 px-2 mb-2">{roleLabel} Profile</p>
-        <div className="flex items-center gap-3 p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-colors">
-          <div className="size-9 rounded-full bg-gradient-to-br from-brand-300 to-brand-500 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20">
-            {user.fullName.split(" ").map(n => n[0]).slice(0, 2).join("")}
-          </div>
+        <Link
+          href={settingsHref}
+          title="Edit your profile & settings"
+          className={cn(
+            "flex items-center gap-3 p-2 rounded-xl transition-colors",
+            pathname?.startsWith(settingsHref) ? "bg-white/15" : "bg-white/5 hover:bg-white/10"
+          )}
+        >
+          {avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt="" className="size-9 rounded-full object-cover ring-2 ring-white/20" />
+          ) : (
+            <div className="size-9 rounded-full bg-gradient-to-br from-brand-300 to-brand-500 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/20">
+              {user.fullName.split(" ").map(n => n[0]).slice(0, 2).join("")}
+            </div>
+          )}
           <div className="flex-1 min-w-0 leading-tight">
             <p className="text-[0.78rem] font-medium truncate text-white">{user.fullName}</p>
             <p className="text-[0.66rem] text-white/50 truncate">{roleSubtitle}</p>
-            {user.id ? <p className="text-[0.62rem] text-white/30 truncate numeral">{user.id}</p> : null}
           </div>
-          <ChevronDown className="size-4 text-white/40" />
-        </div>
+          <Settings className="size-4 text-white/40" />
+        </Link>
       </div>
     </aside>
   );

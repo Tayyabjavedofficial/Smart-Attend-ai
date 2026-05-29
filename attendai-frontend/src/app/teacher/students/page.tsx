@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { Users, Loader2, AlertCircle, Mail } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -8,8 +9,20 @@ import { Button } from "@/components/ui/Button";
 import { useTeacherStudents } from "@/lib/hooks";
 import { type TeacherStudentRow } from "@/lib/api";
 
+const selectCls = "h-10 px-3 rounded-xl bg-white/70 border border-ink-200/60 text-sm text-ink-900 outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500";
+
 export default function TeacherStudentsPage() {
   const { data: rows = [], isLoading, error, refetch } = useTeacherStudents();
+  const [course, setCourse] = useState("");
+  const [section, setSection] = useState("");
+
+  const courses = useMemo(() => Array.from(new Set(rows.map(r => r.courseCode))).sort(), [rows]);
+  const sections = useMemo(() => Array.from(new Set(rows.map(r => r.sectionName))).sort(), [rows]);
+
+  const filtered = useMemo(
+    () => rows.filter(r => (!course || r.courseCode === course) && (!section || r.sectionName === section)),
+    [rows, course, section]
+  );
 
   const columns: Column<TeacherStudentRow>[] = [
     {
@@ -26,6 +39,7 @@ export default function TeacherStudentsPage() {
         </div>
       ),
     },
+    { key: "reg", header: "Roll / Reg No", sortable: true, sortValue: (r) => r.registrationNumber ?? "", render: (r) => <span className="numeral text-sm text-ink-700">{r.registrationNumber ?? "—"}</span> },
     {
       key: "email", header: "Email",
       render: (r) => (
@@ -42,7 +56,7 @@ export default function TeacherStudentsPage() {
     <>
       <PageHeader
         title="My Students"
-        subtitle={`${rows.length} enrollment${rows.length === 1 ? "" : "s"} across your classes.`}
+        subtitle={`${filtered.length} of ${rows.length} shown.`}
         icon={Users}
         crumbs={[{ label: "Teacher", href: "/teacher" }, { label: "Students" }]}
       />
@@ -66,13 +80,30 @@ export default function TeacherStudentsPage() {
           <p className="text-sm text-ink-400 mt-1">Students appear here once they enroll in a class you teach.</p>
         </div>
       ) : (
-        <DataTable
-          data={rows}
-          columns={columns}
-          rowKey={(r) => `${r.studentId}:${r.courseCode}:${r.sectionName}`}
-          searchField={(r) => `${r.fullName} ${r.email} ${r.registrationNumber ?? ""} ${r.courseCode} ${r.sectionName}`}
-          searchPlaceholder="Search by name, reg no, email, course…"
-        />
+        <>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <select className={selectCls} value={course} onChange={(e) => setCourse(e.target.value)}>
+              <option value="">All courses</option>
+              {courses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select className={selectCls} value={section} onChange={(e) => setSection(e.target.value)}>
+              <option value="">All sections</option>
+              {sections.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {(course || section) ? (
+              <button onClick={() => { setCourse(""); setSection(""); }} className="text-xs text-brand-700 hover:underline">Clear filters</button>
+            ) : null}
+          </div>
+
+          <DataTable
+            data={filtered}
+            columns={columns}
+            rowKey={(r) => `${r.studentId}:${r.courseCode}:${r.sectionName}`}
+            searchField={(r) => `${r.fullName} ${r.email} ${r.registrationNumber ?? ""} ${r.courseCode} ${r.sectionName}`}
+            searchPlaceholder="Search by name, roll no, email…"
+          />
+        </>
       )}
     </>
   );
