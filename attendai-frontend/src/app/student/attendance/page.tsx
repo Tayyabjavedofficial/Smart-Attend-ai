@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Radio, ScanFace, CheckCircle2, ArrowRight, ArrowLeft, Sparkles,
-  AlertCircle, Loader2, Clock, ShieldCheck,
+  AlertCircle, Loader2, Clock, ShieldCheck, MapPin,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -28,6 +28,7 @@ export default function MarkAttendancePage() {
   const [face, setFace] = useState<string | null>(null);
   const [result, setResult] = useState<MarkResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
   // Countdown to the challenge expiry.
   const [now, setNow] = useState(() => Date.now());
@@ -56,11 +57,34 @@ export default function MarkAttendancePage() {
 
   const back = () => { setSelected(null); setChallenge(null); setResult(null); };
 
-  const submit = () => {
+  const getPosition = () => new Promise<GeolocationPosition>((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocation not supported")); return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  });
+
+  const submit = async () => {
     if (!selected || !challenge) return;
     setSubmitError(null);
+
+    // Location-verified sessions: capture the student's coordinates first.
+    let geo: { latitude?: number; longitude?: number; locationAccuracy?: number } = {};
+    if (selected.requireLocation) {
+      setLocating(true);
+      try {
+        const pos = await getPosition();
+        geo = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, locationAccuracy: pos.coords.accuracy };
+      } catch {
+        setLocating(false);
+        setSubmitError("This session requires your location. Allow location access in your browser and try again.");
+        return;
+      }
+      setLocating(false);
+    }
+
     markMut.mutate(
-      { sessionId: selected.id, challengeId: challenge.challengeId, submittedCode: code.trim(), faceImage: face ?? undefined },
+      { sessionId: selected.id, challengeId: challenge.challengeId, submittedCode: code.trim(), faceImage: face ?? undefined, ...geo },
       {
         onSuccess: (r) => setResult(r as MarkResult),
         onError: (e) => setSubmitError(e instanceof ApiError ? e.message : "Could not mark attendance."),
@@ -187,15 +211,21 @@ export default function MarkAttendancePage() {
               <CardHeader title="Verify your face" subtitle="Look at the camera and capture a clear photo." />
               <WebcamCapture onCapture={setFace} onClear={() => setFace(null)} captureLabel="Capture face" />
 
+              {selected.requireLocation ? (
+                <div className="mt-3 flex items-center gap-2 text-xs text-brand-700 bg-brand-50/60 ring-1 ring-brand-100 rounded-lg px-3 py-2">
+                  <MapPin className="size-3.5 shrink-0" /> This session checks your location — you must be on campus. Allow location access when prompted.
+                </div>
+              ) : null}
+
               {submitError ? <div className="mt-3"><Badge tone="danger">{submitError}</Badge></div> : null}
 
               <Button
                 className="w-full mt-4"
-                disabled={!code || !face || secondsLeft === 0 || markMut.isPending}
+                disabled={!code || !face || secondsLeft === 0 || markMut.isPending || locating}
                 onClick={submit}
               >
-                {markMut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                {markMut.isPending ? "Verifying…" : secondsLeft === 0 ? "Challenge expired" : "Submit attendance"}
+                {(markMut.isPending || locating) ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                {locating ? "Getting location…" : markMut.isPending ? "Verifying…" : secondsLeft === 0 ? "Challenge expired" : "Submit attendance"}
               </Button>
               <div className="mt-3 flex items-center gap-2 text-[0.7rem] text-ink-400">
                 <ShieldCheck className="size-3.5" /> Your face is matched against your registered profile.

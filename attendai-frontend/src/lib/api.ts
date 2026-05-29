@@ -183,6 +183,7 @@ export interface StudentSession {
   sessionTitle?: string | null;
   status: string;
   startTime?: string | null;
+  requireLocation?: boolean;
 }
 
 /** The currently-open challenge for a session (code intentionally omitted). */
@@ -627,7 +628,7 @@ export const api = {
       ? delay({ present: 38, absent: 7, late: 2, suspicious: 0, pendingReview: 0, total: 45 })
       : request<LiveCounters>(`/teacher/attendance-sessions/${sessionId}/live`),
 
-    createSession: (body: { courseId: number; sectionId: number; sessionTitle?: string }) => MOCK
+    createSession: (body: { courseId: number; sectionId: number; sessionTitle?: string; requireLocation?: boolean }) => MOCK
       ? delay({ id: 999, sessionCode: "AS-NEW", status: "SCHEDULED" } as TeacherSession)
       // CODE_FACE = student types the code + face verification (no QR scanner
       // in the UI, no trusted-device requirement). Matches how students mark.
@@ -703,6 +704,7 @@ export const api = {
       sessionId: number; challengeId: number;
       submittedCode?: string; qrToken?: string;
       faceImage?: string; deviceToken?: string;
+      latitude?: number; longitude?: number; locationAccuracy?: number;
     }) => MOCK
       ? delay({
           recordId: Math.floor(Math.random() * 10000),

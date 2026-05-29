@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Radio, Plus, Play, Square, RefreshCw, Loader2, AlertCircle, Clock,
-  Users, Hash,
+  Users, Hash, MapPin,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -25,6 +25,7 @@ export default function TeacherSessionsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [assignmentKey, setAssignmentKey] = useState("");
   const [title, setTitle] = useState("");
+  const [requireLocation, setRequireLocation] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -38,8 +39,8 @@ export default function TeacherSessionsPage() {
     if (!opt) { setErr("Pick a course & section."); return; }
     setErr(null); setBusy(true);
     try {
-      await api.teacher.createSession({ courseId: opt.courseId, sectionId: opt.sectionId, sessionTitle: title.trim() || undefined });
-      setCreateOpen(false); setTitle(""); setAssignmentKey("");
+      await api.teacher.createSession({ courseId: opt.courseId, sectionId: opt.sectionId, sessionTitle: title.trim() || undefined, requireLocation });
+      setCreateOpen(false); setTitle(""); setAssignmentKey(""); setRequireLocation(false);
       refresh();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not create session.");
@@ -154,6 +155,13 @@ export default function TeacherSessionsPage() {
             <label className="block text-xs font-medium text-ink-500 uppercase tracking-wide">Title (optional)</label>
             <input className={fieldCls} placeholder="e.g. Week 7 Lecture" value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
+          <label className="flex items-start gap-3 p-3 rounded-xl bg-brand-50/50 ring-1 ring-brand-100 cursor-pointer">
+            <input type="checkbox" className="size-4 accent-brand-600 mt-0.5" checked={requireLocation} onChange={(e) => setRequireLocation(e.target.checked)} />
+            <span className="text-sm">
+              <span className="inline-flex items-center gap-1.5 font-medium text-ink-900"><MapPin className="size-3.5 text-brand-600" /> Require on-campus location</span>
+              <span className="block text-xs text-ink-500 mt-0.5">Students must be physically on campus (within the geofence) to mark — blocks remote proxies.</span>
+            </span>
+          </label>
           {err ? <Badge tone="danger">{err}</Badge> : null}
         </div>
       </Modal>
