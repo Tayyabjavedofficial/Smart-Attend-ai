@@ -60,11 +60,18 @@ app:
       high: 80
   password-reset:
     # Where the email's "reset link" points. Frontend reads ?token=... from URL.
-    reset-url-base: ${APP_RESET_URL_BASE:http://localhost:3000/reset-password}
+    # Defaults to the deployed frontend; set APP_RESET_URL_BASE locally for dev.
+    reset-url-base: ${APP_RESET_URL_BASE:https://attendai-ecru.vercel.app/reset-password}
     token-expiration-minutes: ${APP_RESET_TOKEN_EXPIRATION_MINUTES:30}
-    # From: address on the outbound mail. For Gmail SMTP this must match
-    # SPRING_MAIL_USERNAME or be a verified alias on that account.
+    # From: address on the outbound mail. For Brevo this MUST be a verified
+    # sender in the Brevo account; for Gmail SMTP it must match SPRING_MAIL_USERNAME.
     mail-from: ${APP_RESET_MAIL_FROM:no-reply@attendai.local}
+  mail:
+    # auto | brevo | smtp | log  (auto = Brevo if BREVO_API_KEY set, else log the link)
+    provider: ${MAIL_PROVIDER:auto}
+    # Brevo (HTTPS) API key — HF Spaces block SMTP, so this is the deploy path.
+    brevo-api-key: ${BREVO_API_KEY:}
+    from-name: ${APP_MAIL_FROM_NAME:AttendAI}
   geofence:
     # Campus centre for location-verified attendance (Computer Science block).
     latitude: ${APP_GEOFENCE_LAT:34.06816}

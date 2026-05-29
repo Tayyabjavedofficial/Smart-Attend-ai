@@ -13,7 +13,8 @@ public record AppProperties(
         Ai ai,
         Attendance attendance,
         PasswordReset passwordReset,
-        Geofence geofence
+        Geofence geofence,
+        Mail mail
 ) {
     /**
      * Campus geofence used for location-verified sessions. A mark is allowed
@@ -61,5 +62,26 @@ public record AppProperties(
             String resetUrlBase,
             long tokenExpirationMinutes,
             String mailFrom
+    ) {}
+
+    /**
+     * Outbound email transport. HF Spaces block SMTP (ports 25/465/587), so the
+     * deployed app sends over an HTTPS provider API (Brevo) instead.
+     *
+     * {@code provider}:
+     *   - {@code auto} (default): use Brevo when {@code brevoApiKey} is set,
+     *     otherwise just log the reset link (safe demo fallback — nothing breaks).
+     *   - {@code brevo}: always use the Brevo HTTPS API.
+     *   - {@code smtp}: use the classic JavaMailSender / SMTP path (works locally
+     *     or anywhere SMTP isn't blocked).
+     *   - {@code log}: never send; only log the link (useful for local dev).
+     *
+     * The Brevo sender address ({@link PasswordReset#mailFrom()}) must be a
+     * verified sender in the Brevo account, or Brevo will reject the send.
+     */
+    public record Mail(
+            String provider,
+            String brevoApiKey,
+            String fromName
     ) {}
 }
