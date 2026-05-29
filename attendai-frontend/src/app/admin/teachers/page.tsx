@@ -190,13 +190,20 @@ export default function AdminTeachersPage() {
             <Button variant="ghost" onClick={() => setMode(null)} disabled={toggleMut.isPending}>Cancel</Button>
             <Button
               variant={mode?.kind === "toggle" && mode.row.status === "ACTIVE" ? "danger" : "primary"}
-              disabled={toggleMut.isPending}
+              disabled={toggleMut.isPending || updateMut.isPending}
               onClick={() => {
                 if (mode?.kind !== "toggle") return;
-                toggleMut.mutate(mode.row.id, { onSuccess: () => setMode(null) });
+                const opts = { onSuccess: () => setMode(null) };
+                if (mode.row.status === "ACTIVE") {
+                  // Deactivate → DELETE endpoint sets status INACTIVE.
+                  toggleMut.mutate(mode.row.id, opts);
+                } else {
+                  // Reactivate → update status back to ACTIVE.
+                  updateMut.mutate({ id: mode.row.id, patch: { status: "ACTIVE" } }, opts);
+                }
               }}
             >
-              {toggleMut.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              {(toggleMut.isPending || updateMut.isPending) ? <Loader2 className="size-4 animate-spin" /> : null}
               {mode?.kind === "toggle" && mode.row.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
             </Button>
           </>
