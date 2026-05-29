@@ -55,7 +55,8 @@ class AttendanceMarkingServiceTest {
     private AttendanceSession session;
     private AttendanceChallenge challenge;
     private final MarkAttendanceRequest req = new MarkAttendanceRequest(
-            301L, 901L, "ABC123", "qr-token-xyz", "fake-base64-image-data", "device-uuid");
+            301L, 901L, "ABC123", "qr-token-xyz", "fake-base64-image-data", "device-uuid",
+            null, null, null);
 
     @BeforeEach
     void setUp() {
@@ -133,7 +134,8 @@ class AttendanceMarkingServiceTest {
     @Test
     void rejectsWhenCodeMismatch() {
         MarkAttendanceRequest bad = new MarkAttendanceRequest(
-                301L, 901L, "WRONG", "qr-token-xyz", "fake", "device-uuid");
+                301L, 901L, "WRONG", "qr-token-xyz", "fake", "device-uuid",
+                null, null, null);
         assertThatThrownBy(() -> service.mark(10L, bad, "127.0.0.1", "ua"))
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageContaining("does not match");
