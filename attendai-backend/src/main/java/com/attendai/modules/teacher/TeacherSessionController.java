@@ -61,6 +61,13 @@ public class TeacherSessionController {
         return ApiResponse.ok(lifecycleService.close(SecurityUtils.currentUserId(), id));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a session and all its data")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        lifecycleService.delete(SecurityUtils.currentUserId(), id);
+        return ApiResponse.success("Session deleted");
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get one session")
     public ApiResponse<SessionDto> get(@PathVariable Long id) {

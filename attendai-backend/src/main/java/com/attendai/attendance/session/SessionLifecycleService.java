@@ -40,6 +40,10 @@ public class SessionLifecycleService {
     private final ChallengeService challengeService;
     private final SessionEventPublisher eventPublisher;
     private final AppProperties props;
+    private final AttendanceChallengeRepository challengeRepository;
+    private final AttendanceRecordRepository recordRepository;
+    private final AttendanceAttemptRepository attemptRepository;
+    private final com.attendai.domain.security.ProxyAlertRepository proxyAlertRepository;
 
     /** Resolves the authenticated user's teacher record. */
     @Transactional(readOnly = true)
@@ -160,6 +164,26 @@ public class SessionLifecycleService {
         eventPublisher.publishEvent(new SessionEventPublisher.SessionClosedEvent(sessionId, SessionStatus.CLOSED));
         log.info("Closed session {}", sessionId);
         return SessionDto.from(session);
+    }
+
+    /**
+     * Permanently deletes a session and all of its data (challenges, records,
+     * attempts, proxy alerts). No FK cascade is configured, so we clear the
+     * dependents in order first. Teacher must own the session.
+     */
+    @Transactional
+    public void delete(Long teacherUserId, Long sessionId) {
+        Teacher teacher = requireTeacher(teacherUserId);
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("AttendanceSession", sessionId));
+        requireOwnership(session, teacher.getId());
+
+        attemptRepository.deleteBySessionId(sessionId);
+        recordRepository.deleteBySessionId(sessionId);
+        proxyAlertRepository.deleteBySessionId(sessionId);
+        challengeRepository.deleteBySessionId(sessionId);
+        sessionRepository.delete(session);
+        log.info("Deleted session {} and its data", sessionId);
     }
 
     @Transactional(readOnly = true)
