@@ -84,6 +84,7 @@ public class SessionLifecycleService {
                 .sessionTitle(req.sessionTitle())
                 .status(SessionStatus.SCHEDULED)
                 .verificationMode(mode)
+                .requireLocation(Boolean.TRUE.equals(req.requireLocation()))
                 .build();
         AttendanceSession saved = sessionRepository.save(session);
         log.info("Created session {} ({}) for course {} / section {}",

@@ -12,8 +12,21 @@ public record AppProperties(
         Cors cors,
         Ai ai,
         Attendance attendance,
-        PasswordReset passwordReset
+        PasswordReset passwordReset,
+        Geofence geofence
 ) {
+    /**
+     * Campus geofence used for location-verified sessions. A mark is allowed
+     * when the student's reported point is within {@code radiusMeters} of the
+     * centre, plus {@code accuracyBufferMeters} to absorb GPS jitter.
+     */
+    public record Geofence(
+            double latitude,
+            double longitude,
+            int radiusMeters,
+            int accuracyBufferMeters
+    ) {}
+
     public record Jwt(
             String secret,
             long accessTokenExpirationMs,

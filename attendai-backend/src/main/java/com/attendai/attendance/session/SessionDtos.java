@@ -19,7 +19,8 @@ public final class SessionDtos {
             @NotNull Long courseId,
             @NotNull Long sectionId,
             @Size(max = 200) String sessionTitle,
-            VerificationMode verificationMode
+            VerificationMode verificationMode,
+            Boolean requireLocation
     ) {}
 
     public record StartSessionRequest(
@@ -37,7 +38,7 @@ public final class SessionDtos {
             Long courseId, String courseCode, String courseName,
             Long sectionId, String sectionName,
             String sessionTitle, SessionStatus status,
-            VerificationMode verificationMode,
+            VerificationMode verificationMode, Boolean requireLocation,
             Instant startTime, Instant endTime, Instant createdAt
     ) {
         public static SessionDto from(AttendanceSession s) {
@@ -46,6 +47,7 @@ public final class SessionDtos {
                     s.getCourse().getId(), s.getCourse().getCourseCode(), s.getCourse().getCourseName(),
                     s.getSection().getId(), s.getSection().getSectionName(),
                     s.getSessionTitle(), s.getStatus(), s.getVerificationMode(),
+                    s.getRequireLocation(),
                     s.getStartTime(), s.getEndTime(), s.getCreatedAt()
             );
         }

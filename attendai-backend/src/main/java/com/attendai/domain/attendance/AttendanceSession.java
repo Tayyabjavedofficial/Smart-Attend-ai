@@ -65,6 +65,11 @@ public class AttendanceSession extends Auditable {
     @Builder.Default
     private VerificationMode verificationMode = VerificationMode.QR_FACE_DEVICE;
 
+    // When true, marking requires the student to be within the campus geofence.
+    @Column(name = "require_location", nullable = false)
+    @Builder.Default
+    private Boolean requireLocation = false;
+
     public boolean isActive() {
         return status == SessionStatus.ACTIVE;
     }

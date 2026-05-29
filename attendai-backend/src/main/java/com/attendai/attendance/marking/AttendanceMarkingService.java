@@ -64,6 +64,7 @@ public class AttendanceMarkingService {
     private final FaceVerifier faceVerifier;
     private final RiskScorer riskScorer;
     private final SessionEventPublisher eventPublisher;
+    private final com.attendai.config.AppProperties props;
 
     @Transactional
     public MarkAttendanceResponse mark(Long userId, MarkAttendanceRequest req, String ipAddress, String userAgent) {
@@ -119,6 +120,25 @@ public class AttendanceMarkingService {
             logAttempt(student, challenge, req, AttemptResult.FAILED_CODE,
                     "Code/QR mismatch", null, null, ipAddress, userAgent);
             throw new BusinessRuleException("ATT_003", "Submitted code or QR token does not match");
+        }
+
+        // ---- 6b. Location / geofence (only if the session requires it) ----
+        if (Boolean.TRUE.equals(session.getRequireLocation())) {
+            if (req.latitude() == null || req.longitude() == null) {
+                logAttempt(student, challenge, req, AttemptResult.FAILED_CODE,
+                        "Location required but not provided", null, null, ipAddress, userAgent);
+                throw new BusinessRuleException("ATT_LOCATION_REQUIRED",
+                        "This session requires your location. Enable location access and try again.");
+            }
+            var gf = props.geofence();
+            double distance = haversineMeters(req.latitude(), req.longitude(), gf.latitude(), gf.longitude());
+            double allowed = gf.radiusMeters() + gf.accuracyBufferMeters();
+            if (distance > allowed) {
+                logAttempt(student, challenge, req, AttemptResult.FAILED_CODE,
+                        "Outside campus geofence (" + Math.round(distance) + "m)", null, null, ipAddress, userAgent);
+                throw new BusinessRuleException("ATT_LOCATION_OUT_OF_RANGE",
+                        "You appear to be about " + Math.round(distance) + "m away — you must be on campus to mark attendance.");
+            }
         }
 
         // ---- 7. Duplicate ----
@@ -281,6 +301,17 @@ public class AttendanceMarkingService {
 
     private boolean matchesCode(String submitted, String expected) {
         return submitted != null && expected != null && submitted.trim().equalsIgnoreCase(expected);
+    }
+
+    /** Great-circle distance between two lat/lng points, in metres. */
+    private static double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6_371_000; // Earth radius (m)
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     private void logAttempt(Student student, AttendanceChallenge challenge, MarkAttendanceRequest req,

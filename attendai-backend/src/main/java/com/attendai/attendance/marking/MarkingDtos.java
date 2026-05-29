@@ -16,7 +16,10 @@ public final class MarkingDtos {
             String submittedCode,
             String qrToken,
             String faceImage,
-            String deviceToken
+            String deviceToken,
+            Double latitude,
+            Double longitude,
+            Double locationAccuracy
     ) {}
 
     public record MarkAttendanceResponse(

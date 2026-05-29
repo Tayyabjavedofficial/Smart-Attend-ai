@@ -65,6 +65,13 @@ app:
     # From: address on the outbound mail. For Gmail SMTP this must match
     # SPRING_MAIL_USERNAME or be a verified alias on that account.
     mail-from: ${APP_RESET_MAIL_FROM:no-reply@attendai.local}
+  geofence:
+    # Campus centre for location-verified attendance (Computer Science block).
+    latitude: ${APP_GEOFENCE_LAT:34.06816}
+    longitude: ${APP_GEOFENCE_LNG:73.14945}
+    radius-meters: ${APP_GEOFENCE_RADIUS_METERS:50}
+    # Extra slack added to the radius to absorb GPS inaccuracy (esp. indoors).
+    accuracy-buffer-meters: ${APP_GEOFENCE_BUFFER_METERS:80}
 
 springdoc:
   swagger-ui:
