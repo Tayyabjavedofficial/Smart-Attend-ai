@@ -4,6 +4,7 @@ import com.attendai.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
 import java.util.List;
@@ -58,13 +59,20 @@ public class BrevoMailClient {
                 "htmlContent", htmlContent
         );
 
-        client.post()
-                .uri("/smtp/email")
-                .header("api-key", apiKey)
-                .bodyValue(body)
-                .retrieve()
-                .toBodilessEntity()
-                .block(TIMEOUT);
+        try {
+            client.post()
+                    .uri("/smtp/email")
+                    .header("api-key", apiKey)
+                    .bodyValue(body)
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block(TIMEOUT);
+        } catch (WebClientResponseException e) {
+            // Surface Brevo's actual rejection reason (e.g. unverified sender,
+            // invalid key) instead of an opaque 4xx.
+            throw new RuntimeException(
+                    "Brevo HTTP " + e.getStatusCode().value() + ": " + e.getResponseBodyAsString(), e);
+        }
 
         log.info("Brevo accepted email to {}", toEmail);
     }

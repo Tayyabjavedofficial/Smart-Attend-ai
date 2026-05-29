@@ -16,6 +16,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -24,6 +27,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final EmailService emailService;
 
     @PostMapping("/login")
     @Operation(summary = "Authenticate and obtain access + refresh tokens")
@@ -66,5 +70,29 @@ public class AuthController {
     public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.performReset(request);
         return ApiResponse.success("Password updated. You can now log in.");
+    }
+
+    // ---- TEMPORARY mail diagnostics (remove once delivery is confirmed) ----
+
+    @GetMapping("/mail-status")
+    @Operation(summary = "DIAG: show the effective mail transport (no secrets leaked)")
+    public ApiResponse<EmailService.MailStatus> mailStatus() {
+        return ApiResponse.ok(emailService.status());
+    }
+
+    @PostMapping("/mail-test")
+    @Operation(summary = "DIAG: send a test email to the configured sender (self) and report the outcome")
+    public ApiResponse<Map<String, Object>> mailTest() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            String transport = emailService.sendTest();
+            result.put("ok", true);
+            result.put("transport", transport);
+            result.put("sentTo", emailService.status().sender());
+        } catch (Exception e) {
+            result.put("ok", false);
+            result.put("error", e.getMessage());
+        }
+        return ApiResponse.ok(result);
     }
 }

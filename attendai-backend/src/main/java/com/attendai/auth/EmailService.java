@@ -60,6 +60,43 @@ public class EmailService {
         }
     }
 
+    // ---- Diagnostics (temporary; used by /api/auth/mail-status and /mail-test) ----
+
+    /** Non-secret view of the effective mail config — never exposes the key itself. */
+    public record MailStatus(String resolvedProvider, String configuredProvider,
+                             boolean brevoKeyPresent, String sender, String fromName) {}
+
+    public MailStatus status() {
+        String key = props.mail() != null ? props.mail().brevoApiKey() : null;
+        return new MailStatus(
+                resolveProvider(),
+                props.mail() != null ? props.mail().provider() : null,
+                key != null && !key.isBlank(),
+                props.passwordReset().mailFrom(),
+                props.mail() != null ? props.mail().fromName() : null);
+    }
+
+    /**
+     * Send a diagnostic email to the configured sender address ONLY (sender→self,
+     * so this can't be abused as an open relay). Returns the transport used;
+     * throws with the provider's real error message on failure.
+     */
+    public String sendTest() {
+        String to = props.passwordReset().mailFrom();
+        String provider = resolveProvider();
+        String subject = "AttendAI — mail delivery test";
+        String text = "This is a test email confirming AttendAI can deliver transactional mail.";
+        String html = "<p>This is a test email confirming <strong>AttendAI</strong> can deliver transactional mail.</p>";
+        switch (provider) {
+            case "brevo" -> brevoMailClient.send(to, subject, text, html);
+            case "smtp" -> sendViaSmtp(to, subject, text);
+            default -> throw new IllegalStateException(
+                    "No real email transport active (resolved provider = '" + provider
+                    + "'). BREVO_API_KEY is likely not set on the Space.");
+        }
+        return provider;
+    }
+
     /** Resolve "auto" to a concrete transport based on whether a Brevo key exists. */
     private String resolveProvider() {
         String p = props.mail() != null ? props.mail().provider() : null;
