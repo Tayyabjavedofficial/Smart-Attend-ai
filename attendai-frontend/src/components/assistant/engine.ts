@@ -54,6 +54,7 @@ const NAV: Record<Role, NavEntry[]> = {
     { kw: ["teacher", "faculty", "staff"], label: "Teachers", href: "/admin/teachers" },
     { kw: ["course", "subject"], label: "Courses", href: "/admin/courses" },
     { kw: ["section", "group"], label: "Sections", href: "/admin/sections" },
+    { kw: ["batch", "cohort", "program"], label: "Batches", href: "/admin/batches" },
     { kw: ["assign", "allocation"], label: "Assignments", href: "/admin/assignments" },
     { kw: ["enroll", "registration"], label: "Enrollments", href: "/admin/enrollments" },
     { kw: ["alert", "proxy", "suspicious", "cheat", "fraud"], label: "Proxy Alerts", href: "/admin/alerts" },
