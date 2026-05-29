@@ -646,6 +646,10 @@ export const api = {
       ? delay({ id, status: "CLOSED" } as TeacherSession)
       : request<TeacherSession>(`/teacher/attendance-sessions/${id}/close`, { method: "POST" }),
 
+    deleteSession: (id: number) => MOCK
+      ? delay(undefined)
+      : request<void>(`/teacher/attendance-sessions/${id}`, { method: "DELETE" }),
+
     students: () => MOCK
       ? delay([] as TeacherStudentRow[])
       : requestList<TeacherStudentRow>("/teacher/students"),
