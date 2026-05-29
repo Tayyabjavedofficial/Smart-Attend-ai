@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { type LucideIcon, Settings } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { type LucideIcon, Settings, LogOut } from "lucide-react";
 import { Logo } from "@/components/icons/Logo";
 import { useProfile } from "@/lib/hooks";
+import { useAuthStore } from "@/store/authStore";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
 export interface NavItem {
@@ -28,9 +30,22 @@ export function Sidebar({
   roleSubtitle: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: profile } = useProfile();
   const avatar = profile?.avatar ?? null;
   const settingsHref = `/${roleLabel.toLowerCase()}/settings`;
+
+  const clear = useAuthStore((s) => s.clear);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  async function handleLogout() {
+    try {
+      if (refreshToken) await api.auth.logout(refreshToken);
+    } catch {
+      // ignore network/server errors — clear the local session regardless
+    }
+    clear();
+    router.replace("/login");
+  }
 
   return (
     <aside className="hidden lg:flex w-[240px] shrink-0 flex-col glass-dark text-white/90 p-5 sticky top-4 self-start max-h-[calc(100vh-2rem)] rounded-3xl ml-4 mt-4 mb-4">
@@ -106,6 +121,17 @@ export function Sidebar({
           </div>
           <Settings className="size-4 text-white/40" />
         </Link>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="mt-2 w-full flex items-center gap-3 p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors group"
+        >
+          <span className="size-9 rounded-full bg-white/5 grid place-items-center group-hover:bg-rose-500/20 transition-colors">
+            <LogOut className="size-4 group-hover:text-rose-300 transition-colors" />
+          </span>
+          <span className="flex-1 text-left text-[0.8rem] font-medium">Log out</span>
+        </button>
       </div>
     </aside>
   );
